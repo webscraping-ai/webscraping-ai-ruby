@@ -94,12 +94,13 @@ WebScrapingAI.configure do |config|
 end
 
 api_instance = WebScrapingAI::HTMLApi.new
-url = 'https://example.com' # String | URL of the target page
+url = 'https://httpbin.org/post' # String | URL of the target page
 opts = {
   headers: {'key' => '{\"Cookie\":\"session=some_id\"}'}, # Hash<String, String> | HTTP headers to pass to the target page. Can be specified either via a nested query parameter (...&headers[One]=value1&headers=[Another]=value2) or as a JSON encoded object (...&headers={\"One\": \"value1\", \"Another\": \"value2\"})
   timeout: 5000, # Integer | Maximum processing time in ms. Increase it in case of timeout errors (5000 by default, maximum is 30000)
   js: true, # Boolean | Execute on-page JavaScript using a headless browser (true by default), costs 2 requests
-  proxy: 'datacenter' # String | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default)
+  proxy: 'datacenter', # String | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default)
+  request_body: nil # Hash<String, Object> | Request body to pass to the target page
 }
 
 begin
@@ -120,6 +121,7 @@ Name | Type | Description  | Notes
  **timeout** | **Integer**| Maximum processing time in ms. Increase it in case of timeout errors (5000 by default, maximum is 30000) | [optional] [default to 5000]
  **js** | **Boolean**| Execute on-page JavaScript using a headless browser (true by default), costs 2 requests | [optional] [default to true]
  **proxy** | **String**| Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default) | [optional] [default to &#39;datacenter&#39;]
+ **request_body** | [**Hash&lt;String, Object&gt;**](Object.md)| Request body to pass to the target page | [optional] 
 
 ### Return type
 
@@ -131,6 +133,6 @@ nil (empty response body)
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
+- **Content-Type**: application/json, application/x-www-form-urlencoded, application/xml, text/plain
 - **Accept**: application/json, text/html
 
