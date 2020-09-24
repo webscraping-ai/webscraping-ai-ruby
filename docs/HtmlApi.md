@@ -11,7 +11,7 @@ Method | HTTP request | Description
 
 ## get_html
 
-> get_html(url, opts)
+> String get_html(url, opts)
 
 Page HTML by URL
 
@@ -41,7 +41,8 @@ opts = {
 
 begin
   #Page HTML by URL
-  api_instance.get_html(url, opts)
+  result = api_instance.get_html(url, opts)
+  p result
 rescue WebScrapingAI::ApiError => e
   puts "Exception when calling HTMLApi->get_html: #{e}"
 end
@@ -60,7 +61,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-nil (empty response body)
+**String**
 
 ### Authorization
 
@@ -74,7 +75,7 @@ nil (empty response body)
 
 ## post_html
 
-> post_html(url, opts)
+> String post_html(url, opts)
 
 Page HTML by URL with POST request to the target page
 
@@ -105,7 +106,8 @@ opts = {
 
 begin
   #Page HTML by URL with POST request to the target page
-  api_instance.post_html(url, opts)
+  result = api_instance.post_html(url, opts)
+  p result
 rescue WebScrapingAI::ApiError => e
   puts "Exception when calling HTMLApi->post_html: #{e}"
 end
@@ -125,7 +127,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-nil (empty response body)
+**String**
 
 ### Authorization
 

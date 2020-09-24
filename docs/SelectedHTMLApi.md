@@ -13,7 +13,7 @@ Method | HTTP request | Description
 
 ## get_selected
 
-> get_selected(url, opts)
+> String get_selected(url, opts)
 
 HTML of a selected page area by URL and CSS selector
 
@@ -44,7 +44,8 @@ opts = {
 
 begin
   #HTML of a selected page area by URL and CSS selector
-  api_instance.get_selected(url, opts)
+  result = api_instance.get_selected(url, opts)
+  p result
 rescue WebScrapingAI::ApiError => e
   puts "Exception when calling SelectedHTMLApi->get_selected: #{e}"
 end
@@ -64,7 +65,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-nil (empty response body)
+**String**
 
 ### Authorization
 
@@ -144,7 +145,7 @@ Name | Type | Description  | Notes
 
 ## post_selected
 
-> post_selected(url, opts)
+> String post_selected(url, opts)
 
 HTML of a selected page areas by URL and CSS selector, with POST request to the target page
 
@@ -176,7 +177,8 @@ opts = {
 
 begin
   #HTML of a selected page areas by URL and CSS selector, with POST request to the target page
-  api_instance.post_selected(url, opts)
+  result = api_instance.post_selected(url, opts)
+  p result
 rescue WebScrapingAI::ApiError => e
   puts "Exception when calling SelectedHTMLApi->post_selected: #{e}"
 end
@@ -197,7 +199,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-nil (empty response body)
+**String**
 
 ### Authorization
 
