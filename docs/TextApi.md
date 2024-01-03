@@ -1,19 +1,19 @@
-# WebScrapingAI::HTMLApi
+# WebScrapingAI::TextApi
 
 All URIs are relative to *https://api.webscraping.ai*
 
 | Method | HTTP request | Description |
 | ------ | ------------ | ----------- |
-| [**get_html**](HTMLApi.md#get_html) | **GET** /html | Page HTML by URL |
+| [**get_text**](TextApi.md#get_text) | **GET** /text | Page text by URL |
 
 
-## get_html
+## get_text
 
-> String get_html(url, opts)
+> String get_text(url, opts)
 
-Page HTML by URL
+Page text by URL
 
-Returns the full HTML content of a webpage specified by the URL. The response is in plain text. Proxies and Chromium JavaScript rendering are used for page retrieval and processing.
+Returns the visible text content of a webpage specified by the URL. Can be used to feed data to GPT or other LLM models. The response can be in plain text, JSON, or XML format based on the text_format parameter. Proxies and Chromium JavaScript rendering are used for page retrieval and processing. Returns JSON on error.
 
 ### Examples
 
@@ -28,9 +28,11 @@ WebScrapingAI.configure do |config|
   # config.api_key_prefix['api_key'] = 'Bearer'
 end
 
-api_instance = WebScrapingAI::HTMLApi.new
+api_instance = WebScrapingAI::TextApi.new
 url = 'https://example.com' # String | URL of the target page.
 opts = {
+  text_format: 'plain', # String | Format of the text response (plain by default). \"plain\" will return only the page body text. \"json\" and \"xml\" will return a json/xml with \"title\", \"description\" and \"content\" keys.
+  return_links: false, # Boolean | [Works only with text_format=json] Return links from the page body text (false by default). Useful for building web crawlers.
   headers: { key: 3.56}, # Hash<String, String> | HTTP headers to pass to the target page. Can be specified either via a nested query parameter (...&headers[One]=value1&headers=[Another]=value2) or as a JSON encoded object (...&headers={\"One\": \"value1\", \"Another\": \"value2\"}).
   timeout: 10000, # Integer | Maximum web page retrieval time in ms. Increase it in case of timeout errors (10000 by default, maximum is 30000).
   js: true, # Boolean | Execute on-page JavaScript using a headless browser (true by default).
@@ -40,34 +42,33 @@ opts = {
   device: 'desktop', # String | Type of device emulation.
   error_on_404: false, # Boolean | Return error on 404 HTTP status on the target page (false by default).
   error_on_redirect: false, # Boolean | Return error on redirect on the target page (false by default).
-  js_script: 'document.querySelector('button').click();', # String | Custom JavaScript code to execute on the target page.
-  return_script_result: false # Boolean | Return result of the custom JavaScript code (js_script parameter) execution on the target page (false by default, page HTML will be returned).
+  js_script: 'document.querySelector('button').click();' # String | Custom JavaScript code to execute on the target page.
 }
 
 begin
-  # Page HTML by URL
-  result = api_instance.get_html(url, opts)
+  # Page text by URL
+  result = api_instance.get_text(url, opts)
   p result
 rescue WebScrapingAI::ApiError => e
-  puts "Error when calling HTMLApi->get_html: #{e}"
+  puts "Error when calling TextApi->get_text: #{e}"
 end
 ```
 
-#### Using the get_html_with_http_info variant
+#### Using the get_text_with_http_info variant
 
 This returns an Array which contains the response data, status code and headers.
 
-> <Array(String, Integer, Hash)> get_html_with_http_info(url, opts)
+> <Array(String, Integer, Hash)> get_text_with_http_info(url, opts)
 
 ```ruby
 begin
-  # Page HTML by URL
-  data, status_code, headers = api_instance.get_html_with_http_info(url, opts)
+  # Page text by URL
+  data, status_code, headers = api_instance.get_text_with_http_info(url, opts)
   p status_code # => 2xx
   p headers # => { ... }
   p data # => String
 rescue WebScrapingAI::ApiError => e
-  puts "Error when calling HTMLApi->get_html_with_http_info: #{e}"
+  puts "Error when calling TextApi->get_text_with_http_info: #{e}"
 end
 ```
 
@@ -76,6 +77,8 @@ end
 | Name | Type | Description | Notes |
 | ---- | ---- | ----------- | ----- |
 | **url** | **String** | URL of the target page. |  |
+| **text_format** | **String** | Format of the text response (plain by default). \&quot;plain\&quot; will return only the page body text. \&quot;json\&quot; and \&quot;xml\&quot; will return a json/xml with \&quot;title\&quot;, \&quot;description\&quot; and \&quot;content\&quot; keys. | [optional][default to &#39;plain&#39;] |
+| **return_links** | **Boolean** | [Works only with text_format&#x3D;json] Return links from the page body text (false by default). Useful for building web crawlers. | [optional][default to false] |
 | **headers** | [**Hash&lt;String, String&gt;**](String.md) | HTTP headers to pass to the target page. Can be specified either via a nested query parameter (...&amp;headers[One]&#x3D;value1&amp;headers&#x3D;[Another]&#x3D;value2) or as a JSON encoded object (...&amp;headers&#x3D;{\&quot;One\&quot;: \&quot;value1\&quot;, \&quot;Another\&quot;: \&quot;value2\&quot;}). | [optional] |
 | **timeout** | **Integer** | Maximum web page retrieval time in ms. Increase it in case of timeout errors (10000 by default, maximum is 30000). | [optional][default to 10000] |
 | **js** | **Boolean** | Execute on-page JavaScript using a headless browser (true by default). | [optional][default to true] |
@@ -86,7 +89,6 @@ end
 | **error_on_404** | **Boolean** | Return error on 404 HTTP status on the target page (false by default). | [optional][default to false] |
 | **error_on_redirect** | **Boolean** | Return error on redirect on the target page (false by default). | [optional][default to false] |
 | **js_script** | **String** | Custom JavaScript code to execute on the target page. | [optional] |
-| **return_script_result** | **Boolean** | Return result of the custom JavaScript code (js_script parameter) execution on the target page (false by default, page HTML will be returned). | [optional][default to false] |
 
 ### Return type
 
@@ -99,5 +101,5 @@ end
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: application/json, text/html
+- **Accept**: application/json, text/html, text/xml
 

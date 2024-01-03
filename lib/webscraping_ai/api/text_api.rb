@@ -13,16 +13,18 @@ OpenAPI Generator version: 7.2.0
 require 'cgi'
 
 module WebScrapingAI
-  class HTMLApi
+  class TextApi
     attr_accessor :api_client
 
     def initialize(api_client = ApiClient.default)
       @api_client = api_client
     end
-    # Page HTML by URL
-    # Returns the full HTML content of a webpage specified by the URL. The response is in plain text. Proxies and Chromium JavaScript rendering are used for page retrieval and processing.
+    # Page text by URL
+    # Returns the visible text content of a webpage specified by the URL. Can be used to feed data to GPT or other LLM models. The response can be in plain text, JSON, or XML format based on the text_format parameter. Proxies and Chromium JavaScript rendering are used for page retrieval and processing. Returns JSON on error.
     # @param url [String] URL of the target page.
     # @param [Hash] opts the optional parameters
+    # @option opts [String] :text_format Format of the text response (plain by default). \&quot;plain\&quot; will return only the page body text. \&quot;json\&quot; and \&quot;xml\&quot; will return a json/xml with \&quot;title\&quot;, \&quot;description\&quot; and \&quot;content\&quot; keys. (default to 'plain')
+    # @option opts [Boolean] :return_links [Works only with text_format&#x3D;json] Return links from the page body text (false by default). Useful for building web crawlers. (default to false)
     # @option opts [Hash<String, String>] :headers HTTP headers to pass to the target page. Can be specified either via a nested query parameter (...&amp;headers[One]&#x3D;value1&amp;headers&#x3D;[Another]&#x3D;value2) or as a JSON encoded object (...&amp;headers&#x3D;{\&quot;One\&quot;: \&quot;value1\&quot;, \&quot;Another\&quot;: \&quot;value2\&quot;}).
     # @option opts [Integer] :timeout Maximum web page retrieval time in ms. Increase it in case of timeout errors (10000 by default, maximum is 30000). (default to 10000)
     # @option opts [Boolean] :js Execute on-page JavaScript using a headless browser (true by default). (default to true)
@@ -33,17 +35,18 @@ module WebScrapingAI
     # @option opts [Boolean] :error_on_404 Return error on 404 HTTP status on the target page (false by default). (default to false)
     # @option opts [Boolean] :error_on_redirect Return error on redirect on the target page (false by default). (default to false)
     # @option opts [String] :js_script Custom JavaScript code to execute on the target page.
-    # @option opts [Boolean] :return_script_result Return result of the custom JavaScript code (js_script parameter) execution on the target page (false by default, page HTML will be returned). (default to false)
     # @return [String]
-    def get_html(url, opts = {})
-      data, _status_code, _headers = get_html_with_http_info(url, opts)
+    def get_text(url, opts = {})
+      data, _status_code, _headers = get_text_with_http_info(url, opts)
       data
     end
 
-    # Page HTML by URL
-    # Returns the full HTML content of a webpage specified by the URL. The response is in plain text. Proxies and Chromium JavaScript rendering are used for page retrieval and processing.
+    # Page text by URL
+    # Returns the visible text content of a webpage specified by the URL. Can be used to feed data to GPT or other LLM models. The response can be in plain text, JSON, or XML format based on the text_format parameter. Proxies and Chromium JavaScript rendering are used for page retrieval and processing. Returns JSON on error.
     # @param url [String] URL of the target page.
     # @param [Hash] opts the optional parameters
+    # @option opts [String] :text_format Format of the text response (plain by default). \&quot;plain\&quot; will return only the page body text. \&quot;json\&quot; and \&quot;xml\&quot; will return a json/xml with \&quot;title\&quot;, \&quot;description\&quot; and \&quot;content\&quot; keys. (default to 'plain')
+    # @option opts [Boolean] :return_links [Works only with text_format&#x3D;json] Return links from the page body text (false by default). Useful for building web crawlers. (default to false)
     # @option opts [Hash<String, String>] :headers HTTP headers to pass to the target page. Can be specified either via a nested query parameter (...&amp;headers[One]&#x3D;value1&amp;headers&#x3D;[Another]&#x3D;value2) or as a JSON encoded object (...&amp;headers&#x3D;{\&quot;One\&quot;: \&quot;value1\&quot;, \&quot;Another\&quot;: \&quot;value2\&quot;}).
     # @option opts [Integer] :timeout Maximum web page retrieval time in ms. Increase it in case of timeout errors (10000 by default, maximum is 30000). (default to 10000)
     # @option opts [Boolean] :js Execute on-page JavaScript using a headless browser (true by default). (default to true)
@@ -54,30 +57,33 @@ module WebScrapingAI
     # @option opts [Boolean] :error_on_404 Return error on 404 HTTP status on the target page (false by default). (default to false)
     # @option opts [Boolean] :error_on_redirect Return error on redirect on the target page (false by default). (default to false)
     # @option opts [String] :js_script Custom JavaScript code to execute on the target page.
-    # @option opts [Boolean] :return_script_result Return result of the custom JavaScript code (js_script parameter) execution on the target page (false by default, page HTML will be returned). (default to false)
     # @return [Array<(String, Integer, Hash)>] String data, response status code and response headers
-    def get_html_with_http_info(url, opts = {})
+    def get_text_with_http_info(url, opts = {})
       if @api_client.config.debugging
-        @api_client.config.logger.debug 'Calling API: HTMLApi.get_html ...'
+        @api_client.config.logger.debug 'Calling API: TextApi.get_text ...'
       end
       # verify the required parameter 'url' is set
       if @api_client.config.client_side_validation && url.nil?
-        fail ArgumentError, "Missing the required parameter 'url' when calling HTMLApi.get_html"
+        fail ArgumentError, "Missing the required parameter 'url' when calling TextApi.get_text"
+      end
+      allowable_values = ["plain", "xml", "json"]
+      if @api_client.config.client_side_validation && opts[:'text_format'] && !allowable_values.include?(opts[:'text_format'])
+        fail ArgumentError, "invalid value for \"text_format\", must be one of #{allowable_values}"
       end
       if @api_client.config.client_side_validation && !opts[:'timeout'].nil? && opts[:'timeout'] > 30000
-        fail ArgumentError, 'invalid value for "opts[:"timeout"]" when calling HTMLApi.get_html, must be smaller than or equal to 30000.'
+        fail ArgumentError, 'invalid value for "opts[:"timeout"]" when calling TextApi.get_text, must be smaller than or equal to 30000.'
       end
 
       if @api_client.config.client_side_validation && !opts[:'timeout'].nil? && opts[:'timeout'] < 1
-        fail ArgumentError, 'invalid value for "opts[:"timeout"]" when calling HTMLApi.get_html, must be greater than or equal to 1.'
+        fail ArgumentError, 'invalid value for "opts[:"timeout"]" when calling TextApi.get_text, must be greater than or equal to 1.'
       end
 
       if @api_client.config.client_side_validation && !opts[:'js_timeout'].nil? && opts[:'js_timeout'] > 20000
-        fail ArgumentError, 'invalid value for "opts[:"js_timeout"]" when calling HTMLApi.get_html, must be smaller than or equal to 20000.'
+        fail ArgumentError, 'invalid value for "opts[:"js_timeout"]" when calling TextApi.get_text, must be smaller than or equal to 20000.'
       end
 
       if @api_client.config.client_side_validation && !opts[:'js_timeout'].nil? && opts[:'js_timeout'] < 1
-        fail ArgumentError, 'invalid value for "opts[:"js_timeout"]" when calling HTMLApi.get_html, must be greater than or equal to 1.'
+        fail ArgumentError, 'invalid value for "opts[:"js_timeout"]" when calling TextApi.get_text, must be greater than or equal to 1.'
       end
 
       allowable_values = ["datacenter", "residential"]
@@ -93,11 +99,13 @@ module WebScrapingAI
         fail ArgumentError, "invalid value for \"device\", must be one of #{allowable_values}"
       end
       # resource path
-      local_var_path = '/html'
+      local_var_path = '/text'
 
       # query parameters
       query_params = opts[:query_params] || {}
       query_params[:'url'] = url
+      query_params[:'text_format'] = opts[:'text_format'] if !opts[:'text_format'].nil?
+      query_params[:'return_links'] = opts[:'return_links'] if !opts[:'return_links'].nil?
       query_params[:'headers'] = opts[:'headers'] if !opts[:'headers'].nil?
       query_params[:'timeout'] = opts[:'timeout'] if !opts[:'timeout'].nil?
       query_params[:'js'] = opts[:'js'] if !opts[:'js'].nil?
@@ -108,12 +116,11 @@ module WebScrapingAI
       query_params[:'error_on_404'] = opts[:'error_on_404'] if !opts[:'error_on_404'].nil?
       query_params[:'error_on_redirect'] = opts[:'error_on_redirect'] if !opts[:'error_on_redirect'].nil?
       query_params[:'js_script'] = opts[:'js_script'] if !opts[:'js_script'].nil?
-      query_params[:'return_script_result'] = opts[:'return_script_result'] if !opts[:'return_script_result'].nil?
 
       # header parameters
       header_params = opts[:header_params] || {}
       # HTTP header 'Accept' (if needed)
-      header_params['Accept'] = @api_client.select_header_accept(['application/json', 'text/html'])
+      header_params['Accept'] = @api_client.select_header_accept(['application/json', 'text/html', 'text/xml'])
 
       # form parameters
       form_params = opts[:form_params] || {}
@@ -128,7 +135,7 @@ module WebScrapingAI
       auth_names = opts[:debug_auth_names] || ['api_key']
 
       new_options = opts.merge(
-        :operation => :"HTMLApi.get_html",
+        :operation => :"TextApi.get_text",
         :header_params => header_params,
         :query_params => query_params,
         :form_params => form_params,
@@ -139,7 +146,7 @@ module WebScrapingAI
 
       data, status_code, headers = @api_client.call_api(:GET, local_var_path, new_options)
       if @api_client.config.debugging
-        @api_client.config.logger.debug "API called: HTMLApi#get_html\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
+        @api_client.config.logger.debug "API called: TextApi#get_text\nData: #{data.inspect}\nStatus code: #{status_code}\nHeaders: #{headers}"
       end
       return data, status_code, headers
     end
