@@ -11,5 +11,5 @@ Generator version: 7.22.0
 =end
 
 module WebScrapingAI
-  VERSION = '3.2.0'
+  VERSION = '3.2.1'
 end
