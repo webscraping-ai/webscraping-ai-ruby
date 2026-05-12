@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write  # Required for RubyGems trusted publishing (OIDC).
+
+jobs:
+  publish:
+    name: Build and publish to RubyGems
+    runs-on: ubuntu-latest
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/webscraping_ai
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Verify gem version matches release tag
+        run: |
+          GEM_VERSION=$(ruby -Ilib -rwebscraping_ai/version -e 'print WebScrapingAI::VERSION')
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$GEM_VERSION" != "$TAG" ]; then
+            echo "::error::Gem version ($GEM_VERSION) does not match release tag ($TAG)"
+            exit 1
+          fi
+
+      - name: Run tests before release
+        run: bundle exec rspec
+
+      - name: Configure RubyGems trusted publishing
+        uses: rubygems/configure-rubygems-credentials@main
+
+      - name: Build gem
+        run: gem build webscraping_ai.gemspec
+
+      - name: Push gem
+        run: gem push webscraping_ai-*.gem
