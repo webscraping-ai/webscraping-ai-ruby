@@ -38,7 +38,7 @@ opts = {
   js: true, # Boolean | Execute on-page JavaScript using a headless browser (true by default).
   js_timeout: 2000, # Integer | Maximum JavaScript rendering time in ms. Increase it in case if you see a loading indicator instead of data on the target page.
   wait_for: 'wait_for_example', # String | CSS selector to wait for before returning the page content. Useful for pages with dynamic content loading. Overrides js_timeout.
-  proxy: 'datacenter', # String | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default). Note that residential proxy requests are more expensive than datacenter, see the pricing page for details.
+  proxy: 'datacenter', # String | Type of proxy. Use `residential` if your site restricts traffic from datacenters, or `stealth` for the most heavily protected sites with advanced anti-bot detection (`datacenter` by default). Residential and stealth proxy requests are more expensive than datacenter, see the pricing page for details.
   country: 'us', # String | Country of the proxy to use (US by default).
   custom_proxy: 'custom_proxy_example', # String | Your own proxy URL to use instead of our built-in proxy pool in \"http://user:password@host:port\" format (<a target=\"_blank\" href=\"https://webscraping.ai/proxies/smartproxy\">Smartproxy</a> for example).
   device: 'desktop', # String | Type of device emulation.
@@ -86,7 +86,7 @@ end
 | **js** | **Boolean** | Execute on-page JavaScript using a headless browser (true by default). | [optional][default to true] |
 | **js_timeout** | **Integer** | Maximum JavaScript rendering time in ms. Increase it in case if you see a loading indicator instead of data on the target page. | [optional][default to 2000] |
 | **wait_for** | **String** | CSS selector to wait for before returning the page content. Useful for pages with dynamic content loading. Overrides js_timeout. | [optional] |
-| **proxy** | **String** | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default). Note that residential proxy requests are more expensive than datacenter, see the pricing page for details. | [optional][default to &#39;datacenter&#39;] |
+| **proxy** | **String** | Type of proxy. Use &#x60;residential&#x60; if your site restricts traffic from datacenters, or &#x60;stealth&#x60; for the most heavily protected sites with advanced anti-bot detection (&#x60;datacenter&#x60; by default). Residential and stealth proxy requests are more expensive than datacenter, see the pricing page for details. | [optional][default to &#39;datacenter&#39;] |
 | **country** | **String** | Country of the proxy to use (US by default). | [optional][default to &#39;us&#39;] |
 | **custom_proxy** | **String** | Your own proxy URL to use instead of our built-in proxy pool in \&quot;http://user:password@host:port\&quot; format (&lt;a target&#x3D;\&quot;_blank\&quot; href&#x3D;\&quot;https://webscraping.ai/proxies/smartproxy\&quot;&gt;Smartproxy&lt;/a&gt; for example). | [optional] |
 | **device** | **String** | Type of device emulation. | [optional][default to &#39;desktop&#39;] |
@@ -139,7 +139,7 @@ opts = {
   js: true, # Boolean | Execute on-page JavaScript using a headless browser (true by default).
   js_timeout: 2000, # Integer | Maximum JavaScript rendering time in ms. Increase it in case if you see a loading indicator instead of data on the target page.
   wait_for: 'wait_for_example', # String | CSS selector to wait for before returning the page content. Useful for pages with dynamic content loading. Overrides js_timeout.
-  proxy: 'datacenter', # String | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default). Note that residential proxy requests are more expensive than datacenter, see the pricing page for details.
+  proxy: 'datacenter', # String | Type of proxy. Use `residential` if your site restricts traffic from datacenters, or `stealth` for the most heavily protected sites with advanced anti-bot detection (`datacenter` by default). Residential and stealth proxy requests are more expensive than datacenter, see the pricing page for details.
   country: 'us', # String | Country of the proxy to use (US by default).
   custom_proxy: 'custom_proxy_example', # String | Your own proxy URL to use instead of our built-in proxy pool in \"http://user:password@host:port\" format (<a target=\"_blank\" href=\"https://webscraping.ai/proxies/smartproxy\">Smartproxy</a> for example).
   device: 'desktop', # String | Type of device emulation.
@@ -186,7 +186,7 @@ end
 | **js** | **Boolean** | Execute on-page JavaScript using a headless browser (true by default). | [optional][default to true] |
 | **js_timeout** | **Integer** | Maximum JavaScript rendering time in ms. Increase it in case if you see a loading indicator instead of data on the target page. | [optional][default to 2000] |
 | **wait_for** | **String** | CSS selector to wait for before returning the page content. Useful for pages with dynamic content loading. Overrides js_timeout. | [optional] |
-| **proxy** | **String** | Type of proxy, use residential proxies if your site restricts traffic from datacenters (datacenter by default). Note that residential proxy requests are more expensive than datacenter, see the pricing page for details. | [optional][default to &#39;datacenter&#39;] |
+| **proxy** | **String** | Type of proxy. Use &#x60;residential&#x60; if your site restricts traffic from datacenters, or &#x60;stealth&#x60; for the most heavily protected sites with advanced anti-bot detection (&#x60;datacenter&#x60; by default). Residential and stealth proxy requests are more expensive than datacenter, see the pricing page for details. | [optional][default to &#39;datacenter&#39;] |
 | **country** | **String** | Country of the proxy to use (US by default). | [optional][default to &#39;us&#39;] |
 | **custom_proxy** | **String** | Your own proxy URL to use instead of our built-in proxy pool in \&quot;http://user:password@host:port\&quot; format (&lt;a target&#x3D;\&quot;_blank\&quot; href&#x3D;\&quot;https://webscraping.ai/proxies/smartproxy\&quot;&gt;Smartproxy&lt;/a&gt; for example). | [optional] |
 | **device** | **String** | Type of device emulation. | [optional][default to &#39;desktop&#39;] |

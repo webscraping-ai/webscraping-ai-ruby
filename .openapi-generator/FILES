@@ -22,6 +22,7 @@ lib/webscraping_ai/api/selected_html_api.rb
 lib/webscraping_ai/api/text_api.rb
 lib/webscraping_ai/api_client.rb
 lib/webscraping_ai/api_error.rb
+lib/webscraping_ai/api_model_base.rb
 lib/webscraping_ai/configuration.rb
 lib/webscraping_ai/models/account.rb
 lib/webscraping_ai/models/error.rb
