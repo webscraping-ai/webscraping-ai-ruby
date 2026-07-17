@@ -1,8 +1,13 @@
 # WebScraping.AI Ruby Client
 
-Official Ruby client for the [WebScraping.AI](https://webscraping.ai) API. Provides LLM-powered web scraping with Chromium JavaScript rendering, rotating proxies, and built-in HTML parsing.
-
 [![Gem Version](https://badge.fury.io/rb/webscraping_ai.svg)](https://rubygems.org/gems/webscraping_ai)
+[![CI](https://github.com/webscraping-ai/webscraping-ai-ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/webscraping-ai/webscraping-ai-ruby/actions/workflows/ci.yml)
+
+Official Ruby client for the [WebScraping.AI](https://webscraping.ai) API —
+web scraping with Chromium JavaScript rendering, rotating
+datacenter/residential/stealth proxies, and AI-powered question answering and
+structured field extraction on any page. See the
+[API documentation](https://webscraping.ai/docs) for the full parameter reference.
 
 ## Installation
 
@@ -20,6 +25,10 @@ gem install webscraping_ai
 Requires Ruby 3.1+.
 
 ## Quick start
+
+[Sign up](https://webscraping.ai/auth/sign_up) to get an API key — the free
+trial includes 2,000 credits, no credit card required. Your key lives in the
+[dashboard](https://webscraping.ai/dashboard).
 
 ```ruby
 require "webscraping_ai"
@@ -147,6 +156,14 @@ bin/setup        # bundle install
 bundle exec rspec
 bundle exec rubocop
 ```
+
+## Links
+
+- [WebScraping.AI](https://webscraping.ai) — features, pricing, signup
+- [API documentation](https://webscraping.ai/docs)
+- [Dashboard](https://webscraping.ai/dashboard) — API key, usage, request builder
+- Other official clients: [Python](https://github.com/webscraping-ai/webscraping-ai-python) · [JavaScript](https://github.com/webscraping-ai/webscraping-ai-js) · [PHP](https://github.com/webscraping-ai/webscraping-ai-php) · [Go](https://github.com/webscraping-ai/webscraping-ai-go) · [Java](https://github.com/webscraping-ai/webscraping-ai-java) · [.NET](https://github.com/webscraping-ai/webscraping-ai-dotnet) · [CLI](https://github.com/webscraping-ai/webscraping-ai-cli) · [MCP server](https://github.com/webscraping-ai/webscraping-ai-mcp-server) · [n8n node](https://github.com/webscraping-ai/webscraping-ai-n8n)
+- Support: [support@webscraping.ai](mailto:support@webscraping.ai)
 
 ## License
 
