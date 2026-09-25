@@ -189,6 +189,17 @@ bundle exec rspec
 bundle exec rubocop
 ```
 
+## Smoke testing
+
+`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and costs ~32 credits per run (the SERP call alone is 15).
+
+```bash
+WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke
+# or: WEBSCRAPING_AI_API_KEY=... ruby bin/smoke.rb
+```
+
+Each endpoint prints an `ok` or `FAIL` line; the script exits non-zero if any call fails.
+
 ## Links
 
 - [WebScraping.AI](https://webscraping.ai) — features, pricing, signup
