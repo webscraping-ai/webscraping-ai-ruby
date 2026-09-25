@@ -13,7 +13,7 @@ structured field extraction on any page. See the
 
 ```ruby
 # Gemfile
-gem "webscraping_ai", "~> 4.0"
+gem "webscraping_ai", "~> 4.1"
 ```
 
 Or:
@@ -59,6 +59,10 @@ data = client.fields(
     description: "Full product description"
   }
 )
+
+# Google search results (SERP) for a query
+results = client.serp(q: "coffee machines", gl: "us", hl: "en", page: 1)
+results["organic_results"].first["link"]
 
 # Check your account quota
 info = client.account
@@ -120,6 +124,34 @@ Endpoint-specific options:
 - `#fields` — `fields` (`Hash<String, String>`, required) — keys are field names, values are descriptions
 
 Returns: `String` for HTML/text responses, `Hash`/`Array` for JSON responses.
+
+### SERP (`#serp`)
+
+`#serp` is query-shaped rather than URL-shaped, so none of the page-fetch options above apply.
+It returns the parsed search results as a `Hash`. Flat 15 credits per search; failed searches are not charged.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `q` | `String` | — | Search query (required) |
+| `engine` | `String` | `"google"` | Search engine; currently only `google` |
+| `gl` | `String` | `"us"` | Two-letter country code for the search |
+| `hl` | `String` | `"en"` | Two-letter language code for the results |
+| `page` | `Integer` | `1` | Results page number (10 results per page) |
+
+```ruby
+results = client.serp(q: "coffee machines", gl: "gb", page: 2)
+results["search_information"]["organic_results_state"] # => "Results for exact spelling"
+results["organic_results"].each do |r|
+  puts "#{r["position"]}. #{r["title"]} — #{r["link"]}"
+end
+results["pagination"] # => { "current" => 2, "next" => 3 }
+```
+
+Response keys: `search_parameters` (`engine`, `q`, `gl`, `hl`, `page`), `search_information`
+(`query_displayed`, `organic_results_state`, optional `showing_results_for` and `total_results`),
+`organic_results` (`position` — 1-based within the page — `title`, `link`, `domain`, `displayed_link`,
+optional `snippet` and `date`), optional `related_searches` (`query`), and `pagination` (`current`, optional `next`).
+Optional keys are absent when Google does not show them.
 
 ## Error handling
 

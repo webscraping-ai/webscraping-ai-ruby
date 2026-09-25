@@ -178,6 +178,73 @@ RSpec.describe WebScrapingAI::Client do
     end
   end
 
+  describe "#serp" do
+    let(:serp_body) do
+      {
+        search_parameters: { engine: "google", q: "coffee machines", gl: "de", hl: "de", page: 2 },
+        search_information: { query_displayed: "coffee machines", organic_results_state: "Results for exact spelling" },
+        organic_results: [
+          { position: 1, title: "Best Coffee Machines", link: "https://www.example.com/best",
+            domain: "example.com", displayed_link: "www.example.com › Reviews" }
+        ],
+        pagination: { current: 2, next: 3 }
+      }
+    end
+
+    it "GETs /serp with q, engine, gl, hl, page and returns the parsed Hash" do
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: "coffee machines", engine: "google", gl: "de", hl: "de", page: "2" })
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      result = client.serp(q: "coffee machines", engine: "google", gl: "de", hl: "de", page: 2)
+      expect(result["organic_results"].first["domain"]).to eq("example.com")
+      expect(result["pagination"]).to eq("current" => 2, "next" => 3)
+      expect(result["search_parameters"]["page"]).to eq(2)
+    end
+
+    it "sends only q when optional params are omitted" do
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: "coffee machines" })
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: "coffee machines")
+    end
+
+    it "does not accept page-fetch options" do
+      expect { client.serp(q: "coffee", js: true) }.to raise_error(ArgumentError, /js/)
+    end
+
+    it "raises ArgumentError when q is missing or blank" do
+      expect { client.serp(q: "") }.to raise_error(ArgumentError, /q is required/)
+      expect { client.serp(q: "  ") }.to raise_error(ArgumentError, /q is required/)
+      expect { client.serp(q: nil) }.to raise_error(ArgumentError, /q is required/)
+      expect { client.serp }.to raise_error(ArgumentError)
+      expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+    end
+
+    it "maps error statuses to typed errors" do
+      stub_request(:get, %r{#{base_url}/serp})
+        .to_return(status: 402, body: '{"message":"Not enough credits"}',
+                   headers: { "content-type" => "application/json" })
+
+      expect { client.serp(q: "coffee") }.to raise_error(WebScrapingAI::PaymentRequiredError) do |error|
+        expect(error.status).to eq(402)
+        expect(error.message).to eq("Not enough credits")
+      end
+    end
+
+    it "tolerates an error body without the scraping error envelope" do
+      stub_request(:get, %r{#{base_url}/serp})
+        .to_return(status: 504, body: '{"error":"upstream timeout"}',
+                   headers: { "content-type" => "application/json" })
+
+      expect { client.serp(q: "coffee") }.to raise_error(WebScrapingAI::GatewayTimeoutError) do |error|
+        expect(error.message).to eq("HTTP 504")
+        expect(error.response_body).to eq('{"error":"upstream timeout"}')
+      end
+    end
+  end
+
   describe "error handling" do
     {
       400 => WebScrapingAI::BadRequestError,

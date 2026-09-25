@@ -72,3 +72,7 @@ RSpec/NoExpectationExample:
   # specs that rely on stub matching are implicitly asserting.
   Exclude:
     - "spec/webscraping_ai/client_spec.rb"
+
+Naming/MethodParameterName:
+  # `q`, `gl`, `hl` mirror the upstream /serp API parameter names.
+  AllowedNames: [q, gl, hl]

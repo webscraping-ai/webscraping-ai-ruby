@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/).
 
+## 4.1.0 — 2026-09-25
+
+### Added
+
+- `Client#serp(q:, engine:, gl:, hl:, page:)` for the new `GET /serp` endpoint — parsed Google search results (organic results, related searches, pagination) as a Hash. Flat 15 credits per search. Raises `ArgumentError` when `q` is blank.
+
 ## 4.0.1 — 2026-07-17
 
 ### Changed

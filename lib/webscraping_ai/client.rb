@@ -8,6 +8,7 @@ module WebScrapingAI
     DEVICES = %w[desktop mobile tablet].freeze
     TEXT_FORMATS = %w[plain xml json].freeze
     FORMATS = %w[json text].freeze
+    SERP_ENGINES = %w[google].freeze
 
     PAGE_FETCH_OPTIONS = %i[
       headers timeout js js_timeout wait_for proxy country
@@ -64,6 +65,15 @@ module WebScrapingAI
     # GET /selected-multiple — returns an Array of HTML strings, one per selector.
     def selected_multiple(url, selectors:, **opts)
       get("/selected-multiple", url: url, selectors: Array(selectors), **opts.slice(*PAGE_FETCH_OPTIONS))
+    end
+
+    # GET /serp — returns parsed search engine results for `q` as a Hash
+    # (search_parameters, search_information, organic_results, related_searches, pagination).
+    # Query-shaped: none of the page-fetch options apply. Flat 15 credits per search.
+    def serp(q:, engine: nil, gl: nil, hl: nil, page: nil)
+      raise ArgumentError, "q is required" if q.nil? || q.to_s.strip.empty?
+
+      get("/serp", q: q, engine: engine, gl: gl, hl: hl, page: page)
     end
 
     # GET /account — returns Hash with remaining_api_calls, resets_at, remaining_concurrency, email.
