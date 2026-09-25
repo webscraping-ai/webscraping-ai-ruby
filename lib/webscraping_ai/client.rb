@@ -80,6 +80,34 @@ module WebScrapingAI
       get("/serp", q: q, engine: engine, gl: gl, hl: hl, page: page)
     end
 
+    # GET /data — returns structured JSON for a page on a supported site as a Hash
+    # (request_parameters: url/provider/type, parse_status, data). Flat 15 credits per request.
+    #
+    # The client never checks which site `url` belongs to: supported sites (e.g. YouTube, TikTok,
+    # X/Twitter, LinkedIn, Instagram, Reddit) are added server-side. An unsupported URL or page type
+    # returns a 400 that is not charged (BadRequestError); its message lists what is supported.
+    # `provider`, `type` and `parse_status` are open sets of strings; `data` may be nil.
+    #
+    # `country`: two-letter country code of the proxy used to fetch the page, `us` by default.
+    # `transcript`: YouTube videos only. Also fetch the video's transcript into `data.transcript`.
+    # It's null when no matching captions are available. If the transcript fetch itself fails, the
+    # whole request fails with a 500 and is not charged.
+    # `transcript_language`: caption language to pick, e.g. `en` or `de`. Without it, English is
+    # preferred, then the first available track. If the video has no captions in that language,
+    # `data.transcript` is null.
+    #
+    # Any other keyword arguments are sent as-is as extra query params (for provider-specific params
+    # added later). Values must be String, Integer, Float or boolean (nil omits the param); the names
+    # `api_key`, `url`, `country`, `transcript` and `transcript_language` raise ArgumentError.
+    # None of the page-fetch options apply.
+    def data(url, country: nil, transcript: nil, transcript_language: nil, **params)
+      raise ArgumentError, "url is required" if url.nil? || (url.is_a?(String) && url.strip.empty?)
+      raise ArgumentError, "url must be a String" unless url.is_a?(String)
+
+      named = { country: country, transcript: transcript, transcript_language: transcript_language }.compact
+      get("/data", url: url, **data_extra_params(params), **named)
+    end
+
     def inspect
       "#<#{self.class.name} base_url=#{configuration.base_url.inspect} api_key=\"[FILTERED]\">"
     end
@@ -90,6 +118,54 @@ module WebScrapingAI
     end
 
     private
+
+    DATA_RESERVED_PARAMS = %w[api_key url].freeze
+    DATA_TYPED_PARAMS = %w[country transcript transcript_language].freeze
+    private_constant :DATA_RESERVED_PARAMS, :DATA_TYPED_PARAMS
+
+    # Extra /data query params are passed through untouched (same encoder, so `&`/`=` are escaped),
+    # except that they can't override the credentials or the target URL, and can't repeat a typed
+    # param (a string key like "country" would otherwise collide with `country:`).
+    def data_extra_params(params)
+      params.each_with_object({}) do |(key, value), extra|
+        name = key.to_s
+        raise ArgumentError, "#{name} can't be passed as an extra /data param" if DATA_RESERVED_PARAMS.include?(name)
+        if DATA_TYPED_PARAMS.include?(name)
+          raise ArgumentError, "#{name} can't be passed as an extra /data param; use the #{name}: option"
+        end
+
+        extra[name.to_sym] = data_extra_value(name, value)
+      end
+    end
+
+    def data_extra_value(name, value)
+      case value
+      when nil, String, Integer, true, false then value
+      when Float
+        raise ArgumentError, "extra /data param #{name} must be a finite number" unless value.finite?
+
+        plain_float(value)
+      else
+        raise ArgumentError, "extra /data param #{name} must be a String, Integer, Float or boolean"
+      end
+    end
+
+    # Float#to_s switches to exponent notation (1.0e+20, 1.5e-07); send plain decimals instead.
+    def plain_float(value)
+      text = value.to_s
+      return text unless text.include?("e")
+
+      mantissa, exponent = text.split("e")
+      fraction_digits = mantissa.split(".")[1].to_s.sub(/0+\z/, "").length
+      format("%.#{[fraction_digits - exponent.to_i, 0].max}f", value)
+    end
+
+    def redact(text)
+      key = configuration.api_key.to_s
+      text = text.to_s
+      text = text.gsub(key, "[FILTERED]") unless key.empty?
+      text.gsub(/api_key=[^&\s"']*/, "api_key=[FILTERED]")
+    end
 
     def connection
       @connection ||= Faraday.new(url: configuration.base_url) do |conn|
@@ -102,15 +178,17 @@ module WebScrapingAI
       end
     end
 
+    # Transport errors are re-raised with `cause: nil` and a redacted message: the Faraday error (and
+    # anything it wraps) may carry the request URL, which contains the API key.
     def get(path, **params)
       response = connection.get(path) do |req|
         req.params = params.merge(api_key: configuration.api_key)
       end
       handle_response(response)
     rescue Faraday::TimeoutError => e
-      raise TimeoutError, e.message
+      raise TimeoutError.new(redact(e.message)), cause: nil
     rescue Faraday::ConnectionFailed => e
-      raise ConnectionError, e.message
+      raise ConnectionError.new(redact(e.message)), cause: nil
     end
 
     def handle_response(response)

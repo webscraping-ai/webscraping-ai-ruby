@@ -64,6 +64,10 @@ data = client.fields(
 results = client.serp(q: "coffee machines", gl: "us", hl: "en", page: 1)
 results["organic_results"].first["link"]
 
+# Structured data for a page on a supported site (YouTube, TikTok, X, LinkedIn, Instagram, Reddit, ...)
+video = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+video["data"]["title"]
+
 # Check your account quota
 info = client.account
 # => { "remaining_api_calls" => 200_000, "resets_at" => 1_617_073_667, "remaining_concurrency" => 100 }
@@ -153,6 +157,44 @@ Response keys: `search_parameters` (`engine`, `q`, `gl`, `hl`, `page`), `search_
 optional `snippet` and `date`), optional `related_searches` (`query`), and `pagination` (`current`, optional `next`).
 Optional keys are absent when Google does not show them.
 
+### Structured data (`#data`)
+
+`#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` returns structured JSON
+for a public page on a supported site as a `Hash`. Pass the page's normal URL; the site (`provider`) and
+page kind (`type`) are detected from it. Flat 15 credits per request, including pages that parse empty
+(`parse_status` `"parse_failed"`) or no longer exist (`"not_found"`); failed fetches are not charged.
+None of the page-fetch options above apply.
+
+Supported sites today include, for example, YouTube (video/channel/playlist), TikTok (video/profile),
+X/Twitter (tweet/profile), LinkedIn (company/job/profile), Instagram (post/reel/profile) and Reddit
+(post/subreddit/user). **More sites are added server-side**, and they work with this gem without an
+upgrade: the client never checks the URL's site. An unsupported URL or page type returns a 400 that is
+not charged (`WebScrapingAI::BadRequestError`). Its message lists what is supported.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `String` | — | Page URL (required, positional; blank or non-String raises `ArgumentError`) |
+| `country` | `String` | `"us"` | Two-letter country code of the proxy used to fetch the page, `us` by default |
+| `transcript` | `Boolean` | `false` | YouTube videos only. Also fetch the video's transcript into `data.transcript`. It's null when no matching captions are available. If the transcript fetch itself fails, the whole request fails with a 500 and is not charged |
+| `transcript_language` | `String` | — | Caption language to pick, e.g. `en` or `de`. Without it, English is preferred, then the first available track. If the video has no captions in that language, `data.transcript` is null |
+| `**params` | `String`, `Integer`, `Float`, boolean | — | Extra query params sent as-is, for provider-specific params added later (`nil` omits one). `api_key`, `url`, `country`, `transcript` and `transcript_language` raise `ArgumentError`; use the named options for the last three |
+
+```ruby
+result = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ", transcript: true)
+result["request_parameters"] # => { "url" => "...", "provider" => "youtube", "type" => "video" }
+result["parse_status"]       # => "ok" (or "parse_failed" / "not_found")
+result["data"]["title"]      # shape depends on provider and type; may be nil
+
+begin
+  client.data("https://example.com/")
+rescue WebScrapingAI::BadRequestError => e
+  e.message # => "Unsupported URL for /data. Supported sites: youtube, tiktok, ..."
+end
+```
+
+`provider`, `type` and `parse_status` are open sets of strings, and `data` is the decoded JSON as-is
+(no per-site classes), so new sites and fields show up without a gem release.
+
 ## Error handling
 
 All API errors inherit from `WebScrapingAI::ApiError` and expose `#status`, `#message`, `#status_code`, `#status_message`, `#body`, and `#response_body`.
@@ -191,7 +233,7 @@ bundle exec rubocop
 
 ## Smoke testing
 
-`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and costs ~32 credits per run: the four page calls run with `js: false` and `proxy: "datacenter"` (1 credit each), `question` and `fields` cost 6 each, and the SERP call is 15. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, `selected_multiple` must match something), and failure messages redact the API key.
+`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and costs ~47 credits per run: the four page calls run with `js: false` and `proxy: "datacenter"` (1 credit each), `question` and `fields` cost 6 each, and the SERP and `/data` (YouTube video) calls are 15 each. A second `/data` call on `https://example.com/` must come back as the server's free 400, proving there is no client-side site filter. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, `/data` must parse a title, `selected_multiple` must match something), and failure messages redact the API key.
 
 ```bash
 WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke

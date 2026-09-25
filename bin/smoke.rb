@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # Hand-run smoke test against the live API. Not part of the test suite —
-# costs ~32 credits per full sweep: 4 page calls x 1 (js: false, datacenter proxy),
-# question + fields 2 x 6, serp 15, account free. The SERP call alone is 15.
+# costs ~47 credits per full sweep: 4 page calls x 1 (js: false, datacenter proxy),
+# question + fields 2 x 6, serp 15, data 15, data_unsupported free (400), account free.
 #
 # Usage:
 #   WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke
@@ -70,6 +70,26 @@ cases = {
     check.call(actual_q == "coffee machines", "serp search_parameters.q was #{actual_q.inspect}")
     first = organic.first
     "#{organic.size} organic results, first: #{first.is_a?(Hash) ? first["title"].inspect : "none"}"
+  end,
+  "data" => lambda do
+    result = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    check.call(result.is_a?(Hash), "data returned #{result.class}")
+    check.call(result["parse_status"] == "ok", "data parse_status was #{result["parse_status"].inspect}")
+    provider = result.dig("request_parameters", "provider")
+    check.call(provider == "youtube", "data request_parameters.provider was #{provider.inspect}")
+    payload = result["data"]
+    title = payload.is_a?(Hash) ? payload["title"] : nil
+    check.call(title.is_a?(String) && !title.strip.empty?, "data returned no data.title")
+    "#{provider}/#{result.dig("request_parameters", "type")} #{result["parse_status"]}, title: #{title.inspect}"
+  end,
+  # No client-side site filter: an unsupported URL must reach the server and come back as its free 400.
+  "data_unsupported" => lambda do
+    client.data("https://example.com/")
+    raise SmokeCheckFailed, "data on https://example.com/ unexpectedly succeeded"
+  rescue WebScrapingAI::BadRequestError => e
+    check.call(e.status == 400, "data_unsupported status was #{e.status}")
+    check.call(e.message.include?("Unsupported URL"), "data_unsupported message was #{e.message.inspect}")
+    "server 400: #{e.message}"
   end
 }
 

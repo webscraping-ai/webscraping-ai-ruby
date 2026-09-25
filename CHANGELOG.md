@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/).
 
+## 4.2.0 — 2026-09-25
+### Added
+
+- `Client#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` for the `GET /data` endpoint — structured JSON for a page on a supported site (e.g. YouTube, TikTok, X, LinkedIn, Instagram, Reddit) as a Hash with `request_parameters`, `parse_status` and `data`. Flat 15 credits per request. The client does not check the URL's site: new sites are added server-side, and an unsupported URL or page type returns a 400 that is not charged (`BadRequestError`); its message lists what is supported. Raises `ArgumentError` when `url` is blank or not a String. Extra keyword arguments are sent as-is as query params (String, Integer, Float or boolean; Floats are sent as plain decimals). `api_key`, `url`, `country`, `transcript` and `transcript_language` as extra params raise `ArgumentError` (use the named options).
+- `bin/smoke.rb` checks `/data` on a YouTube video and that `https://example.com/` gets the server's 400 "Unsupported URL" error (~47 credits per sweep).
+
+### Fixed
+
+- `TimeoutError` and `ConnectionError` redact `api_key=...` from the transport error's message and no longer carry the Faraday exception as `cause`, since it may include the request URL.
+
 ## 4.1.0 — 2026-09-25
 
 ### Added

@@ -282,6 +282,150 @@ RSpec.describe WebScrapingAI::Client do
     end
   end
 
+  describe "#data" do
+    def video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    def json_headers = { "content-type" => "application/json" }
+
+    let(:data_body) do
+      {
+        request_parameters: { url: video_url, provider: "youtube", type: "video" },
+        parse_status: "ok",
+        data: { video_id: "dQw4w9WgXcQ", title: "Never Gonna Give You Up", tags: %w[rick astley] }
+      }
+    end
+
+    it "GETs /data with url, country, transcript and transcript_language and returns the parsed Hash" do
+      stub_request(:get, "#{base_url}/data")
+        .with(query: { api_key: api_key, url: video_url, country: "de", transcript: "true",
+                       transcript_language: "en" })
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+
+      result = client.data(video_url, country: "de", transcript: true, transcript_language: "en")
+      expect(result["request_parameters"]).to eq("url" => video_url, "provider" => "youtube", "type" => "video")
+      expect(result["parse_status"]).to eq("ok")
+      expect(result["data"]["title"]).to eq("Never Gonna Give You Up")
+    end
+
+    it "sends only url when optional params are omitted and false transcript as \"false\"" do
+      stub_request(:get, "#{base_url}/data")
+        .with(query: { api_key: api_key, url: video_url })
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+      stub_request(:get, "#{base_url}/data")
+        .with(query: { api_key: api_key, url: video_url, transcript: "false" })
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+
+      client.data(video_url)
+      client.data(video_url, transcript: false)
+    end
+
+    it "sends extra params as-is, escaping & and = in keys and values" do
+      stub_request(:get, "#{base_url}/data")
+        .with(query: { api_key: api_key, url: video_url, "comments" => "true", "limit" => "5",
+                       "a&b" => "c=d&e", "sort" => "new" })
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+
+      client.data(video_url, comments: true, limit: 5, "a&b" => "c=d&e", sort: "new")
+      expect(WebMock).to have_requested(:get, /[?&]a%26b=c(=|%3D)d%26e&/)
+    end
+
+    it "sends a hostile unknown-site URL byte-for-byte with no client-side check" do
+      odd_url = "  https://Example.COM/A%2Fb/ünï?x=1&y=a b#Frag  "
+      sent = nil
+      stub_request(:get, %r{#{base_url}/data})
+        .with { |req| sent = req.uri.query }
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+
+      client.data(odd_url)
+      expect(URI.decode_www_form(sent)).to eq([["api_key", api_key], ["url", odd_url]])
+    end
+
+    it "raises ArgumentError for a missing, blank or non-String url without a request" do
+      expect { client.data(nil) }.to raise_error(ArgumentError, /url is required/)
+      expect { client.data("") }.to raise_error(ArgumentError, /url is required/)
+      expect { client.data(" \t\n") }.to raise_error(ArgumentError, /url is required/)
+      expect { client.data(123) }.to raise_error(ArgumentError, /url must be a String/)
+      expect(WebMock).not_to have_requested(:get, %r{#{base_url}/data})
+    end
+
+    it "requires the url argument" do
+      expect { client.data }.to raise_error(ArgumentError)
+    end
+
+    it "rejects api_key and url in extra params without a request" do
+      expect { client.data(video_url, api_key: "other") }.to raise_error(ArgumentError, /api_key/)
+      expect { client.data(video_url, "api_key" => "other") }.to raise_error(ArgumentError, /api_key/)
+      expect { client.data(video_url, "url" => "https://evil.example") }.to raise_error(ArgumentError, /url/)
+      expect(WebMock).not_to have_requested(:get, %r{#{base_url}/data})
+    end
+
+    %w[country transcript transcript_language].each do |name|
+      it "rejects a string-keyed #{name} extra param, set or not, without a request" do
+        expect { client.data(video_url, name => "x") }.to raise_error(ArgumentError, /use the #{name}: option/)
+        expect do
+          client.data(video_url, name.to_sym => "y", name => "x")
+        end.to raise_error(ArgumentError, /use the #{name}: option/)
+        expect(WebMock).not_to have_requested(:get, %r{#{base_url}/data})
+      end
+    end
+
+    [{ a: 1 }, [1, 2], :sym, 1r, Complex(1, 2), Float::NAN, Float::INFINITY, Object.new].each do |bad|
+      it "rejects the extra param value #{bad.inspect} without a request" do
+        expect { client.data(video_url, extra: bad) }.to raise_error(ArgumentError, /param extra must be/)
+        expect(WebMock).not_to have_requested(:get, %r{#{base_url}/data})
+      end
+    end
+
+    it "sends Floats as plain decimals" do
+      stub_request(:get, "#{base_url}/data")
+        .with(query: { api_key: api_key, url: video_url, "a" => "2.5", "b" => "100000000000000000000",
+                       "c" => "0.00000015" })
+        .to_return(status: 200, body: data_body.to_json, headers: json_headers)
+
+      client.data(video_url, a: 2.5, b: 1e20, c: 1.5e-7)
+    end
+
+    it "round-trips unknown provider/type strings and data: nil with parse_failed" do
+      body = { request_parameters: { url: video_url, provider: "newsite", type: "gallery" },
+               parse_status: "parse_failed", data: nil }
+      stub_request(:get, %r{#{base_url}/data}).to_return(status: 200, body: body.to_json, headers: json_headers)
+
+      result = client.data(video_url)
+      expect(result["request_parameters"]["provider"]).to eq("newsite")
+      expect(result["request_parameters"]["type"]).to eq("gallery")
+      expect(result["parse_status"]).to eq("parse_failed")
+      expect(result).to have_key("data")
+      expect(result["data"]).to be_nil
+    end
+
+    it "maps a 400 {message} to BadRequestError" do
+      message = "Unsupported URL for /data. Supported sites: youtube, tiktok. For other sites, use /ai/fields"
+      stub_request(:get, %r{#{base_url}/data})
+        .to_return(status: 400, body: { message: message }.to_json, headers: json_headers)
+
+      expect { client.data("https://example.com/") }.to raise_error(WebScrapingAI::BadRequestError) do |error|
+        expect(error.status).to eq(400)
+        expect(error.message).to eq(message)
+      end
+    end
+
+    it "keeps the API key out of error messages and cause chains" do
+      leaky = "Failed to open TCP connection for GET #{base_url}/data?api_key=#{api_key}&url=x (no route)"
+      stub_request(:get, %r{#{base_url}/data}).to_raise(Faraday::ConnectionFailed.new(leaky))
+
+      expect { client.data(video_url) }.to raise_error(WebScrapingAI::ConnectionError) do |error|
+        expect(error.message).to include("api_key=[FILTERED]")
+        expect(error.cause).to be_nil
+        chain = []
+        current = error
+        while current
+          chain << current.message << current.inspect
+          current = current.cause
+        end
+        expect(chain.join("\n")).not_to include(api_key)
+      end
+    end
+  end
+
   describe "#inspect" do
     it "does not reveal the API key" do
       output = client.inspect
