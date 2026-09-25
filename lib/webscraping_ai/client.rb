@@ -70,10 +70,18 @@ module WebScrapingAI
     # GET /serp — returns parsed search engine results for `q` as a Hash
     # (search_parameters, search_information, organic_results, related_searches, pagination).
     # Query-shaped: none of the page-fetch options apply. Flat 15 credits per search.
+    # `q` must be a non-blank String (sent as-is, untrimmed). `page`, when given, must be an
+    # Integer >= 1; the server caps it at 100.
     def serp(q:, engine: nil, gl: nil, hl: nil, page: nil)
-      raise ArgumentError, "q is required" if q.nil? || q.to_s.strip.empty?
+      raise ArgumentError, "q is required" if q.nil? || (q.is_a?(String) && q.strip.empty?)
+      raise ArgumentError, "q must be a String" unless q.is_a?(String)
+      raise ArgumentError, "page must be an Integer >= 1" unless page.nil? || (page.is_a?(Integer) && page >= 1)
 
       get("/serp", q: q, engine: engine, gl: gl, hl: hl, page: page)
+    end
+
+    def inspect
+      "#<#{self.class.name} base_url=#{configuration.base_url.inspect} api_key=\"[FILTERED]\">"
     end
 
     # GET /account — returns Hash with remaining_api_calls, resets_at, remaining_concurrency, email.

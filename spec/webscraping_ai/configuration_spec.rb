@@ -35,4 +35,20 @@ RSpec.describe WebScrapingAI::Configuration do
       end
     end
   end
+
+  describe "#inspect" do
+    it "masks the API key" do
+      config = described_class.new
+      config.api_key = "super-secret-key"
+      expect(config.inspect).not_to include("super-secret-key")
+      expect(config.inspect).to include('api_key="[FILTERED]"')
+      expect(config.inspect).to include("https://api.webscraping.ai")
+    end
+
+    it "shows nil when no key is set" do
+      config = described_class.new
+      config.api_key = nil
+      expect(config.inspect).to include("api_key=nil")
+    end
+  end
 end

@@ -222,6 +222,43 @@ RSpec.describe WebScrapingAI::Client do
       expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
     end
 
+    it "raises ArgumentError when q is only mixed whitespace" do
+      expect { client.serp(q: "\t\n ") }.to raise_error(ArgumentError, /q is required/)
+      expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+    end
+
+    it "raises ArgumentError when q is not a String" do
+      expect { client.serp(q: 123) }.to raise_error(ArgumentError, /q must be a String/)
+      expect { client.serp(q: :coffee) }.to raise_error(ArgumentError, /q must be a String/)
+      expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+    end
+
+    it "sends q untrimmed" do
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: " coffee " })
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: " coffee ")
+    end
+
+    [0, -1, 1.5, 2.0, "2", true, Float::NAN].each do |bad_page|
+      it "raises ArgumentError for page #{bad_page.inspect}" do
+        expect do
+          client.serp(q: "coffee", page: bad_page)
+        end.to raise_error(ArgumentError, /page must be an Integer >= 1/)
+        expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+      end
+    end
+
+    it "accepts page 1 and large pages (the server caps at 100)" do
+      stub_request(:get, %r{#{base_url}/serp})
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: "coffee", page: 1)
+      client.serp(q: "coffee", page: 150)
+      expect(WebMock).to have_requested(:get, "#{base_url}/serp").with(query: hash_including(page: "150"))
+    end
+
     it "maps error statuses to typed errors" do
       stub_request(:get, %r{#{base_url}/serp})
         .to_return(status: 402, body: '{"message":"Not enough credits"}',
@@ -242,6 +279,15 @@ RSpec.describe WebScrapingAI::Client do
         expect(error.message).to eq("HTTP 504")
         expect(error.response_body).to eq('{"error":"upstream timeout"}')
       end
+    end
+  end
+
+  describe "#inspect" do
+    it "does not reveal the API key" do
+      output = client.inspect
+      expect(output).not_to include(api_key)
+      expect(output).to include('api_key="[FILTERED]"')
+      expect(client.configuration.inspect).not_to include(api_key)
     end
   end
 

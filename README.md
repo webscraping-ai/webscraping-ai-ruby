@@ -132,11 +132,11 @@ It returns the parsed search results as a `Hash`. Flat 15 credits per search; fa
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `q` | `String` | — | Search query (required) |
+| `q` | `String` | — | Search query (required; blank or non-String raises `ArgumentError`) |
 | `engine` | `String` | `"google"` | Search engine; currently only `google` |
 | `gl` | `String` | `"us"` | Two-letter country code for the search |
 | `hl` | `String` | `"en"` | Two-letter language code for the results |
-| `page` | `Integer` | `1` | Results page number (10 results per page) |
+| `page` | `Integer` | `1` | Results page number (10 results per page). Must be an `Integer` >= 1, otherwise `ArgumentError`; the server caps it at 100 |
 
 ```ruby
 results = client.serp(q: "coffee machines", gl: "gb", page: 2)
@@ -191,7 +191,7 @@ bundle exec rubocop
 
 ## Smoke testing
 
-`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and costs ~32 credits per run (the SERP call alone is 15).
+`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and costs ~32 credits per run: the four page calls run with `js: false` and `proxy: "datacenter"` (1 credit each), `question` and `fields` cost 6 each, and the SERP call is 15. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, `selected_multiple` must match something), and failure messages redact the API key.
 
 ```bash
 WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke

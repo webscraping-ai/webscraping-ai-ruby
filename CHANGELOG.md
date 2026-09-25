@@ -6,7 +6,12 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Added
 
-- `Client#serp(q:, engine:, gl:, hl:, page:)` for the new `GET /serp` endpoint — parsed Google search results (organic results, related searches, pagination) as a Hash. Flat 15 credits per search. Raises `ArgumentError` when `q` is blank.
+- `Client#serp(q:, engine: nil, gl: nil, hl: nil, page: nil)` for the new `GET /serp` endpoint — parsed Google search results (organic results, related searches, pagination) as a Hash. Flat 15 credits per search. Raises `ArgumentError` when `q` is blank or not a String, or when `page` is not an Integer >= 1 (the server would silently fall back to page 1 and still bill). The server caps `page` at 100.
+- `bin/smoke.rb` live smoke script: asserts result shapes (not just the absence of exceptions), runs page tools with `js: false` on datacenter proxies (~32 credits per sweep), and redacts the API key from failure output.
+
+### Fixed
+
+- `Client#inspect` and `Configuration#inspect` no longer print the API key; it is shown as `api_key="[FILTERED]"`.
 
 ## 4.0.1 — 2026-07-17
 
