@@ -136,7 +136,7 @@ It returns the parsed search results as a `Hash`. Flat 15 credits per search; fa
 | `engine` | `String` | `"google"` | Search engine; currently only `google` |
 | `gl` | `String` | `"us"` | Two-letter country code for the search |
 | `hl` | `String` | `"en"` | Two-letter language code for the results |
-| `page` | `Integer` | `1` | Results page number (10 results per page). Must be an `Integer` >= 1, otherwise `ArgumentError`; the server caps it at 100 |
+| `page` | `Integer` | `1` | Results page number (10 results per page). Must be an `Integer` >= 1, otherwise `ArgumentError`; the server rejects values above 100 with a 400 (not billed) |
 
 ```ruby
 results = client.serp(q: "coffee machines", gl: "gb", page: 2)

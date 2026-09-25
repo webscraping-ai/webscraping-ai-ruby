@@ -71,7 +71,7 @@ module WebScrapingAI
     # (search_parameters, search_information, organic_results, related_searches, pagination).
     # Query-shaped: none of the page-fetch options apply. Flat 15 credits per search.
     # `q` must be a non-blank String (sent as-is, untrimmed). `page`, when given, must be an
-    # Integer >= 1; the server caps it at 100.
+    # Integer >= 1; the server rejects values above 100 with a 400 (not billed).
     def serp(q:, engine: nil, gl: nil, hl: nil, page: nil)
       raise ArgumentError, "q is required" if q.nil? || (q.is_a?(String) && q.strip.empty?)
       raise ArgumentError, "q must be a String" unless q.is_a?(String)

@@ -250,7 +250,7 @@ RSpec.describe WebScrapingAI::Client do
       end
     end
 
-    it "accepts page 1 and large pages (the server caps at 100)" do
+    it "accepts page 1 and large pages (the server enforces the 100 limit)" do
       stub_request(:get, %r{#{base_url}/serp})
         .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
 
