@@ -69,7 +69,8 @@ module WebScrapingAI
 
     # GET /serp — returns parsed search engine results for `q` as a Hash
     # (search_parameters, search_information, organic_results, related_searches, pagination).
-    # Query-shaped: none of the page-fetch options apply. Flat 15 credits per search.
+    # Query-shaped: none of the page-fetch options apply. Priced per search
+    # (see https://webscraping.ai/docs#serp); failed searches are not charged.
     # `q` must be a non-blank String (sent as-is, untrimmed). `page`, when given, must be an
     # Integer >= 1; the server rejects values above 100 with a 400 (not billed).
     def serp(q:, engine: nil, gl: nil, hl: nil, page: nil)
@@ -81,7 +82,8 @@ module WebScrapingAI
     end
 
     # GET /data — returns structured JSON for a page on a supported site as a Hash
-    # (request_parameters: url/provider/type, parse_status, data). Flat 15 credits per request.
+    # (request_parameters: url/provider/type, parse_status, data). Priced per site
+    # (see https://webscraping.ai/docs#data); unsupported URLs and failed fetches are not charged.
     #
     # The client never checks which site `url` belongs to: supported sites (e.g. YouTube, TikTok,
     # X/Twitter, LinkedIn, Instagram, Reddit) are added server-side. An unsupported URL or page type

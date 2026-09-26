@@ -26,8 +26,8 @@ Requires Ruby 3.1+.
 
 ## Quick start
 
-[Sign up](https://webscraping.ai/auth/sign_up) to get an API key — the free
-trial includes 2,000 credits, no credit card required. Your key lives in the
+[Sign up](https://webscraping.ai/auth/sign_up) to get an API key — a free
+trial, no credit card required. Your key lives in the
 [dashboard](https://webscraping.ai/dashboard).
 
 ```ruby
@@ -132,7 +132,7 @@ Returns: `String` for HTML/text responses, `Hash`/`Array` for JSON responses.
 ### SERP (`#serp`)
 
 `#serp` is query-shaped rather than URL-shaped, so none of the page-fetch options above apply.
-It returns the parsed search results as a `Hash`. Flat 15 credits per search; failed searches are not charged.
+It returns the parsed search results as a `Hash`. Priced per search (see [pricing](https://webscraping.ai/docs#serp)); failed searches are not charged.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -161,8 +161,9 @@ Optional keys are absent when Google does not show them.
 
 `#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` returns structured JSON
 for a public page on a supported site as a `Hash`. Pass the page's normal URL; the site (`provider`) and
-page kind (`type`) are detected from it. Flat 15 credits per request, including pages that parse empty
-(`parse_status` `"parse_failed"`) or no longer exist (`"not_found"`); failed fetches are not charged.
+page kind (`type`) are detected from it. Priced per site (see [pricing](https://webscraping.ai/docs#data)),
+including pages that parse empty (`parse_status` `"parse_failed"`) or no longer exist (`"not_found"`);
+unsupported URLs and failed fetches are not charged.
 None of the page-fetch options above apply.
 
 Supported sites today include, for example, YouTube (video/channel/playlist), TikTok (video/profile),
