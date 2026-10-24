@@ -1,3 +1,5 @@
+require "bigdecimal"
+
 RSpec.describe WebScrapingAI::Client do
   let(:api_key) { "test-key" }
   let(:client) { described_class.new(api_key: api_key) }
@@ -278,6 +280,136 @@ RSpec.describe WebScrapingAI::Client do
       expect { client.serp(q: "coffee") }.to raise_error(WebScrapingAI::GatewayTimeoutError) do |error|
         expect(error.message).to eq("HTTP 504")
         expect(error.response_body).to eq('{"error":"upstream timeout"}')
+      end
+    end
+
+    it "GETs /serp with location and pages and returns the combined pages" do
+      body = serp_body.merge(
+        search_parameters: { engine: "google", q: "coffee machines", pages: 2, location_requested: "Austin, TX",
+                             location_used: "Austin,Texas,United States" },
+        organic_results: [{ position: 1, page: 1, title: "A" }, { position: 11, page: 2, title: "B" }],
+        pagination: { current: 1, next: 3, pages_returned: 2 }
+      )
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: "coffee machines", location: "Austin, TX", pages: "2" })
+        .to_return(status: 200, body: body.to_json, headers: { "content-type" => "application/json" })
+
+      result = client.serp(q: "coffee machines", location: "Austin, TX", pages: 2)
+      expect(result["search_parameters"]["location_used"]).to eq("Austin,Texas,United States")
+      expect(result["organic_results"].map { |r| [r["position"], r["page"]] }).to eq([[1, 1], [11, 2]])
+      expect(result["pagination"]["pages_returned"]).to eq(2)
+    end
+
+    it "sends location untrimmed and uule as-is" do
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: "coffee", location: " Москва ", uule: "w+CAIQICIGUGFyaXM" })
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: "coffee", location: " Москва ", uule: "w+CAIQICIGUGFyaXM")
+    end
+
+    it "sends lat, lon and radius" do
+      stub_request(:get, "#{base_url}/serp")
+        .with(query: { api_key: api_key, q: "coffee", lat: "30.2672", lon: "-97.7431", radius: "500" })
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: "coffee", lat: 30.2672, lon: -97.7431, radius: 500)
+    end
+
+    {
+      30.2672 => "30.2672", -97.7431 => "-97.7431", 1e-7 => "0.0000001", 1e-9 => "0", 1.0e-5 => "0.00001",
+      -1.5e-6 => "-0.0000015", 48 => "48", 48.0 => "48", -0.0 => "0", 0 => "0", 179.99999999 => "180",
+      1r / 4 => "0.25"
+    }.each do |value, wire|
+      it "sends lat/lon #{value.inspect} as the plain decimal #{wire.inspect}" do
+        stub_request(:get, "#{base_url}/serp")
+          .with(query: { api_key: api_key, q: "coffee", lat: wire, lon: wire })
+          .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+        client.serp(q: "coffee", lat: value, lon: value)
+      end
+    end
+
+    %i[pages radius].each do |name|
+      [0, -1, 1.5, 2.0, "2", true, Float::NAN].each do |bad|
+        it "raises ArgumentError for #{name} #{bad.inspect}" do
+          expect do
+            client.serp(q: "coffee", name => bad)
+          end.to raise_error(ArgumentError, /#{name} must be an Integer >= 1/)
+          expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+        end
+      end
+    end
+
+    it "leaves the pages and radius upper bounds to the server" do
+      stub_request(:get, %r{#{base_url}/serp})
+        .to_return(status: 200, body: serp_body.to_json, headers: { "content-type" => "application/json" })
+
+      client.serp(q: "coffee", pages: 9, radius: 5000, location: "Austin, TX")
+      expect(WebMock).to have_requested(:get, "#{base_url}/serp")
+        .with(query: hash_including(pages: "9", radius: "5000"))
+    end
+
+    %i[lat lon].each do |name|
+      [Float::NAN, Float::INFINITY, -Float::INFINITY, BigDecimal("1e400"), BigDecimal("-1e400"), "30.1", true,
+       Complex(1, 2)].each do |bad|
+        it "raises ArgumentError for a non-finite or non-numeric #{name} (#{bad.inspect})" do
+          expect do
+            client.serp(q: "coffee", name => bad)
+          end.to raise_error(ArgumentError, /#{name} must be a finite number/)
+          expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp})
+        end
+      end
+    end
+  end
+
+  describe "#serp_locations" do
+    let(:locations_body) do
+      [
+        { id: "1026201", google_id: 1_026_201, google_parent_id: 21_176, name: "Austin",
+          canonical_name: "Austin,Texas,United States", country_code: "US", target_type: "City",
+          reach: 974_447, gps: [-97.7431, 30.2672] },
+        { id: "2840", google_id: 2840, google_parent_id: nil, name: "United States",
+          canonical_name: "United States", country_code: "US", target_type: "Country",
+          reach: 330_000_000, gps: [-77.0369, 38.9072] }
+      ]
+    end
+
+    it "GETs /serp/locations with q and limit and returns the parsed Array" do
+      stub_request(:get, "#{base_url}/serp/locations")
+        .with(query: { api_key: api_key, q: "austin", limit: "3" })
+        .to_return(status: 200, body: locations_body.to_json, headers: { "content-type" => "application/json" })
+
+      result = client.serp_locations("austin", limit: 3)
+      expect(result.first).to include("id" => "1026201", "google_id" => 1_026_201,
+                                      "canonical_name" => "Austin,Texas,United States", "gps" => [-97.7431, 30.2672])
+      expect(result.last["google_parent_id"]).to be_nil
+    end
+
+    it "sends no q or limit when omitted" do
+      stub_request(:get, "#{base_url}/serp/locations")
+        .with(query: { api_key: api_key })
+        .to_return(status: 200, body: "[]", headers: { "content-type" => "application/json" })
+
+      expect(client.serp_locations).to eq([])
+    end
+
+    [0, -1, 1.5, "3", true, Float::NAN].each do |bad|
+      it "raises ArgumentError for limit #{bad.inspect}" do
+        expect do
+          client.serp_locations("austin", limit: bad)
+        end.to raise_error(ArgumentError, /limit must be an Integer >= 1/)
+        expect(WebMock).not_to have_requested(:get, %r{#{base_url}/serp/locations})
+      end
+    end
+
+    it "leaves the limit upper bound to the server" do
+      stub_request(:get, %r{#{base_url}/serp/locations})
+        .to_return(status: 400, body: '{"message":"limit must be from 1 to 10"}',
+                   headers: { "content-type" => "application/json" })
+
+      expect { client.serp_locations("austin", limit: 11) }.to raise_error(WebScrapingAI::BadRequestError) do |error|
+        expect(error.message).to eq("limit must be from 1 to 10")
       end
     end
   end

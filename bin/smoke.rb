@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 # Hand-run smoke test against the live API. Not part of the test suite —
-# costs ~47 credits per full sweep: 4 page calls x 1 (js: false, datacenter proxy),
-# question + fields 2 x 6, serp 15, data 15, data_unsupported free (400), account free.
+# costs ~77 credits per full sweep: 4 page calls x 1 (js: false, datacenter proxy),
+# question + fields 2 x 6, serp 15, serp_location 2 pages x 15, serp_locations free, data 15,
+# data_unsupported free (400), account free.
 #
 # Usage:
 #   WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke
@@ -70,6 +71,22 @@ cases = {
     check.call(actual_q == "coffee machines", "serp search_parameters.q was #{actual_q.inspect}")
     first = organic.first
     "#{organic.size} organic results, first: #{first.is_a?(Hash) ? first["title"].inspect : "none"}"
+  end,
+  "serp_location" => lambda do
+    result = client.serp(q: "coffee machines", location: "Austin, TX", pages: 2)
+    organic = result.is_a?(Hash) ? result["organic_results"] : nil
+    check.call(organic.is_a?(Array) && !organic.empty?, "serp_location returned no organic_results")
+    used = result.dig("search_parameters", "location_used")
+    check.call(used.is_a?(String) && used.include?("Austin"), "serp_location location_used was #{used.inspect}")
+    pages_returned = result.dig("pagination", "pages_returned")
+    "#{organic.size} organic results from #{used.inspect}, pages_returned: #{pages_returned.inspect}"
+  end,
+  "serp_locations" => lambda do
+    result = client.serp_locations("austin", limit: 3)
+    check.call(result.is_a?(Array) && !result.empty?, "serp_locations returned #{JSON.generate(result)}")
+    name = result.first.is_a?(Hash) ? result.first["canonical_name"] : nil
+    check.call(name.is_a?(String) && name.include?("Austin"), "serp_locations first canonical_name was #{name.inspect}")
+    "#{result.size} locations, first: #{name.inspect}"
   end,
   "data" => lambda do
     result = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ")

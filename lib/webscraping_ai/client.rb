@@ -69,16 +69,42 @@ module WebScrapingAI
 
     # GET /serp — returns parsed search engine results for `q` as a Hash
     # (search_parameters, search_information, organic_results, related_searches, pagination).
-    # Query-shaped: none of the page-fetch options apply. Priced per search
+    # Query-shaped: none of the page-fetch options apply. Billed per results page returned
     # (see https://webscraping.ai/docs#serp); failed searches are not charged.
     # `q` must be a non-blank String (sent as-is, untrimmed). `page`, when given, must be an
     # Integer >= 1; the server rejects values above 100 with a 400 (not billed).
-    def serp(q:, engine: nil, gl: nil, hl: nil, page: nil)
+    #
+    # Every search runs from one fixed location: `location` (a name such as "Austin, TX" or
+    # "Austin,Texas,United States", or an id from #serp_locations), `lat` + `lon`, or `uule`, otherwise
+    # the capital of the `gl` country, so repeats and later pages are consistent. `gl` defaults to the
+    # location's country. `pages` (1-5) fetches consecutive pages starting at `page` as one de-duplicated
+    # list: `position` counts through the combined list and each result gets a `page` key.
+    #
+    # `pages` and `radius` (meters, 1-1000), when given, must be Integers >= 1; `lat` and `lon` must be
+    # finite numbers and are sent as plain decimals. Ranges and which location params can be combined are
+    # checked by the server (a 400, not billed).
+    def serp(q:, engine: nil, gl: nil, hl: nil, page: nil, pages: nil, location: nil, uule: nil, lat: nil,
+             lon: nil, radius: nil)
       raise ArgumentError, "q is required" if q.nil? || (q.is_a?(String) && q.strip.empty?)
       raise ArgumentError, "q must be a String" unless q.is_a?(String)
-      raise ArgumentError, "page must be an Integer >= 1" unless page.nil? || (page.is_a?(Integer) && page >= 1)
 
-      get("/serp", q: q, engine: engine, gl: gl, hl: hl, page: page)
+      check_positive_integer(:page, page)
+      check_positive_integer(:pages, pages)
+      check_positive_integer(:radius, radius)
+
+      get("/serp", q: q, engine: engine, gl: gl, hl: hl, page: page, pages: pages, location: location,
+                   uule: uule, lat: coordinate(:lat, lat), lon: coordinate(:lon, lon), radius: radius)
+    end
+
+    # GET /serp/locations — returns an Array of location Hashes matching `q` (part of an English
+    # location name), most populous first: id, google_id, google_parent_id (nil for countries), name,
+    # canonical_name, country_code, target_type, reach and gps ([longitude, latitude]). Pass
+    # `canonical_name` (or `id`) as #serp's `location:`. Without `q`, the most populous locations are
+    # returned. `limit`, when given, must be an Integer >= 1; the server allows up to 10. Free.
+    def serp_locations(q = nil, limit: nil)
+      check_positive_integer(:limit, limit)
+
+      get("/serp/locations", q: q, limit: limit)
     end
 
     # GET /data — returns structured JSON for a page on a supported site as a Hash
@@ -150,6 +176,25 @@ module WebScrapingAI
       else
         raise ArgumentError, "extra /data param #{name} must be a String, Integer, Float or boolean"
       end
+    end
+
+    def check_positive_integer(name, value)
+      return if value.nil? || (value.is_a?(Integer) && value >= 1)
+
+      raise ArgumentError, "#{name} must be an Integer >= 1"
+    end
+
+    # The server only accepts plain decimals (`-?\d+(\.\d+)?`) for lat/lon, so never send Ruby's
+    # exponent notation (1.0e-07): round to 7 fractional digits and trim trailing zeros.
+    def coordinate(name, value)
+      return nil if value.nil?
+      raise ArgumentError, "#{name} must be a finite number" unless value.is_a?(Numeric) && value.real? && value.finite?
+
+      text = format("%.7f", value).sub(/0+\z/, "").delete_suffix(".")
+      # BigDecimal("1e400") is finite but formats as "Inf".
+      raise ArgumentError, "#{name} must be a finite number" unless text.match?(/\A-?\d+(\.\d+)?\z/)
+
+      text == "-0" ? "0" : text
     end
 
     # Float#to_s switches to exponent notation (1.0e+20, 1.5e-07); send plain decimals instead.

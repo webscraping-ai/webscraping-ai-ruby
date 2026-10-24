@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 4.3.0 — 2026-10-24
+### Added
+
+- `Client#serp` gains `pages:`, `location:`, `uule:`, `lat:`, `lon:` and `radius:`. Every search runs from one fixed location (`location`, `lat` + `lon`, or `uule`, otherwise the capital of the `gl` country), so repeats and later pages are consistent; `gl` defaults to the location's country. `pages` (1–5) fetches consecutive pages as one de-duplicated list, billed per results page returned (see https://webscraping.ai/docs#serp). Raises `ArgumentError` when `pages` or `radius` is not an Integer >= 1, or when `lat`/`lon` is not a finite number. `lat`/`lon` are sent as plain decimals rounded to 7 places (never exponent notation). Ranges and conflicting location options are left to the server's 400 (not charged). New response keys are documented in the README (`search_parameters.location_used`, `organic_results[].page`, `pagination.pages_returned`, ...).
+- `Client#serp_locations(q = nil, limit: nil)` for the new `GET /serp/locations` endpoint — returns an Array of matching locations (`id`, `canonical_name`, `country_code`, `target_type`, `reach`, `gps`, ...), most populous first; pass `canonical_name` or `id` as `serp`'s `location:`. Free, and the endpoint needs no API key. Raises `ArgumentError` when `limit` is not an Integer >= 1.
+- `bin/smoke.rb` checks a two-page SERP from Austin and `serp_locations("austin", limit: 3)`.
+
 ### Changed
 
 - Docs: stop stating credit prices (they're set server-side and change); link to https://webscraping.ai/docs pricing instead.
@@ -10,8 +16,8 @@ All notable changes to this project will be documented in this file. This projec
 ## 4.2.0 — 2026-09-25
 ### Added
 
-- `Client#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` for the `GET /data` endpoint — structured JSON for a page on a supported site (e.g. YouTube, TikTok, X, LinkedIn, Instagram, Reddit) as a Hash with `request_parameters`, `parse_status` and `data`. Flat 15 credits per request. The client does not check the URL's site: new sites are added server-side, and an unsupported URL or page type returns a 400 that is not charged (`BadRequestError`); its message lists what is supported. Raises `ArgumentError` when `url` is blank or not a String. Extra keyword arguments are sent as-is as query params (String, Integer, Float or boolean; Floats are sent as plain decimals). `api_key`, `url`, `country`, `transcript` and `transcript_language` as extra params raise `ArgumentError` (use the named options).
-- `bin/smoke.rb` checks `/data` on a YouTube video and that `https://example.com/` gets the server's 400 "Unsupported URL" error (~47 credits per sweep).
+- `Client#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` for the `GET /data` endpoint — structured JSON for a page on a supported site (e.g. YouTube, TikTok, X, LinkedIn, Instagram, Reddit) as a Hash with `request_parameters`, `parse_status` and `data`. Priced per site (see https://webscraping.ai/docs#data). The client does not check the URL's site: new sites are added server-side, and an unsupported URL or page type returns a 400 that is not charged (`BadRequestError`); its message lists what is supported. Raises `ArgumentError` when `url` is blank or not a String. Extra keyword arguments are sent as-is as query params (String, Integer, Float or boolean; Floats are sent as plain decimals). `api_key`, `url`, `country`, `transcript` and `transcript_language` as extra params raise `ArgumentError` (use the named options).
+- `bin/smoke.rb` checks `/data` on a YouTube video and that `https://example.com/` gets the server's 400 "Unsupported URL" error.
 
 ### Fixed
 
@@ -21,8 +27,8 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Added
 
-- `Client#serp(q:, engine: nil, gl: nil, hl: nil, page: nil)` for the new `GET /serp` endpoint — parsed Google search results (organic results, related searches, pagination) as a Hash. Flat 15 credits per search. Raises `ArgumentError` when `q` is blank or not a String, or when `page` is not an Integer >= 1 (the server also rejects it with a 400, not billed; checking client-side saves the round trip). Pages are 1–100: the server rejects a `page` above 100 with a 400.
-- `bin/smoke.rb` live smoke script: asserts result shapes (not just the absence of exceptions), runs page tools with `js: false` on datacenter proxies (~32 credits per sweep), and redacts the API key from failure output.
+- `Client#serp(q:, engine: nil, gl: nil, hl: nil, page: nil)` for the new `GET /serp` endpoint — parsed Google search results (organic results, related searches, pagination) as a Hash. Priced per search (see https://webscraping.ai/docs#serp). Raises `ArgumentError` when `q` is blank or not a String, or when `page` is not an Integer >= 1 (the server also rejects it with a 400, not billed; checking client-side saves the round trip). Pages are 1–100: the server rejects a `page` above 100 with a 400.
+- `bin/smoke.rb` live smoke script: asserts result shapes (not just the absence of exceptions), runs page tools with `js: false` on datacenter proxies to keep the sweep cheap, and redacts the API key from failure output.
 
 ### Fixed
 
