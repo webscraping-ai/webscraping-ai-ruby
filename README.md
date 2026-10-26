@@ -70,9 +70,9 @@ results = client.serp(q: "coffee machines", location: "Austin, TX", pages: 2)
 # Location names for serp's location: (free)
 client.serp_locations("austin").first["canonical_name"] # => "Austin,Texas,United States"
 
-# Structured data for a page on a supported site (YouTube, TikTok, X, LinkedIn, Instagram, Reddit, ...)
-video = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-video["data"]["title"]
+# Structured data for any public web page
+page = client.data("https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html")
+page["data"]["title"]
 
 # Check your account quota
 info = client.account
@@ -207,38 +207,60 @@ and `google_parent_id` is `nil` for countries.
 ### Structured data (`#data`)
 
 `#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` returns structured JSON
-for a public page on a supported site as a `Hash`. Pass the page's normal URL; the site (`provider`) and
-page kind (`type`) are detected from it. Priced per site (see [pricing](https://webscraping.ai/docs#data)),
-including pages that parse empty (`parse_status` `"parse_failed"`) or no longer exist (`"not_found"`);
-unsupported URLs and failed fetches are not charged.
-None of the page-fetch options above apply.
+for any public web page as a `Hash`. Pass the page's normal URL; the site the page belongs to (`provider`,
+e.g. `toscrape.com`) and the kind of page (`type`, e.g. `product`) are detected from it. See
+[pricing](https://webscraping.ai/docs#data).
 
-Supported sites today include, for example, YouTube (video/channel/playlist), TikTok (video/profile),
-X/Twitter (tweet/profile), LinkedIn (company/job/profile), Instagram (post/reel/profile) and Reddit
-(post/subreddit/user). **More sites are added server-side**, and they work with this gem without an
-upgrade: the client never checks the URL's site. An unsupported URL or page type returns a 400 that is
-not charged (`WebScrapingAI::BadRequestError`). Its message lists what is supported.
+Some popular sites have dedicated parsers with fixed fields. For other sites, the first request for a new
+kind of page also has an AI model learn the page's structure, so it can take up to about 45 seconds (keep
+the client `timeout`, 60 seconds by default, above that); afterwards pages of that kind on that site
+return data straight away for every user. The client never checks the
+URL's site, so new sites and parsers work without a gem upgrade.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `String` | — | Page URL (required, positional; blank or non-String raises `ArgumentError`) |
 | `country` | `String` | `"us"` | Two-letter country code of the proxy used to fetch the page, `us` by default |
-| `transcript` | `Boolean` | `false` | YouTube videos only. Also fetch the video's transcript into `data.transcript`. It's null when no matching captions are available. If the transcript fetch itself fails, the whole request fails with a 500 and is not charged |
-| `transcript_language` | `String` | — | Caption language to pick, e.g. `en` or `de`. Without it, English is preferred, then the first available track. If the video has no captions in that language, `data.transcript` is null |
+| `transcript` | `Boolean` | `false` | Video pages on sites with a dedicated parser only. Also fetch the video's transcript into `data.transcript`. It's null when no matching captions are available. If the transcript fetch itself fails, the whole request fails with a 500 and is not charged |
+| `transcript_language` | `String` | — | With `transcript: true`. Caption language to pick, e.g. `en` or `de`. Without it, English is preferred, then the first available track. If the video has no captions in that language, `data.transcript` is null |
 | `**params` | `String`, `Integer`, `Float`, boolean | — | Extra query params sent as-is, for provider-specific params added later (`nil` omits one). `api_key`, `url`, `country`, `transcript` and `transcript_language` raise `ArgumentError`; use the named options for the last three |
 
 ```ruby
-result = client.data("https://www.youtube.com/watch?v=dQw4w9WgXcQ", transcript: true)
-result["request_parameters"] # => { "url" => "...", "provider" => "youtube", "type" => "video" }
+result = client.data("https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html")
+result["request_parameters"] # => { "url" => "...", "provider" => "toscrape.com", "type" => "product" }
 result["parse_status"]       # => "ok" (or "parse_failed" / "not_found")
-result["data"]["title"]      # shape depends on provider and type; may be nil
+result["data"]               # => { "title" => "A Light in the Attic", "price" => 51.77, "currency" => "GBP" }
+                             #    shape depends on provider and type; may be nil
+```
 
+**503 — structure still being learned.** When learning the page's structure takes longer than the
+request, or another request is already learning that site, the API returns a 503 with `error_code` `"structure_processing"` and `retry_after` (seconds),
+plus a `Retry-After` header; not charged. It is raised as a plain `WebScrapingAI::ApiError` with `status`
+503; the body is in `JSON.parse(e.response_body)`. Retry after `retry_after` seconds; the retry usually
+returns data (if learning failed meanwhile, it may learn again or return the 422 below):
+
+```ruby
+url = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
 begin
-  client.data("https://example.com/")
-rescue WebScrapingAI::BadRequestError => e
-  e.message # => "Unsupported URL for /data. Supported sites: youtube, tiktok, ..."
+  result = client.data(url)
+rescue WebScrapingAI::ApiError => e
+  raise unless e.status == 503
+
+  # { "message" => "...", "error_code" => "structure_processing", "retry_after" => 30 }
+  sleep JSON.parse(e.response_body)["retry_after"] || 30
+  result = client.data(url)
 end
 ```
+
+**422 — no structured data.** If no structured data can be found on the page (empty page, login wall),
+the API returns a 422 with `error_code` `"structure_unavailable"`, not charged. It is raised as a plain
+`WebScrapingAI::ApiError` with `status` 422; the `error_code` is in `JSON.parse(e.response_body)`. Use
+`#fields` for such pages instead.
+
+**Other `/data` errors.** Redirects within the same site (http→https, `www`, trailing slash) are followed;
+a redirect to another site raises `WebScrapingAI::ServerError` (500, `error_code` `"target_redirect"`, the
+target in the message), not charged. Starting too many new kinds of pages in an hour raises
+`WebScrapingAI::RateLimitError` (429, `error_code` `"rate_limited"`).
 
 `provider`, `type` and `parse_status` are open sets of strings, and `data` is the decoded JSON as-is
 (no per-site classes), so new sites and fields show up without a gem release.
@@ -268,6 +290,8 @@ rescue WebScrapingAI::TimeoutError => e
   # Client-side: the HTTP request exceeded `Client#timeout`.
 rescue WebScrapingAI::ConnectionError => e
   # Network failure before a response was received.
+rescue WebScrapingAI::ApiError => e
+  # Any other status, e.g. 503 or 422 from #data (structure still being learned / no structured data).
 end
 ```
 
@@ -281,7 +305,7 @@ bundle exec rubocop
 
 ## Smoke testing
 
-`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and uses real credits on every run (see [pricing](https://webscraping.ai/docs)): the four page calls run with `js: false` and `proxy: "datacenter"` to keep them cheap, there are two AI calls (`question`, `fields`), two SERP calls (one plain, one two-page search from Austin, billed per page returned) and one `/data` call (a YouTube video). `serp_locations` is free. A second `/data` call on `https://example.com/` must come back as the server's free 400, proving there is no client-side site filter. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, the Austin SERP must report an Austin `location_used`, `serp_locations` must find Austin, `/data` must parse a title, `selected_multiple` must match something), and failure messages redact the API key.
+`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and uses real credits (see [pricing](https://webscraping.ai/docs)): the four page calls run with `js: false` and `proxy: "datacenter"` to keep the cost down, there are two AI calls (`question`, `fields`), two SERP calls (one plain, one two-page search from Austin, billed per page returned) and one `/data` call on a page on a site with a dedicated parser. `serp_locations` is free. A second `/data` call on `https://example.com/` (any site) must come back as a success envelope, a free 503 `structure_processing`, or a free 422 `structure_unavailable`, proving there is no client-side site filter. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, the Austin SERP must report an Austin `location_used`, `serp_locations` must find Austin, `/data` must parse a title, `selected_multiple` must match something), and failure messages redact the API key.
 
 ```bash
 WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke

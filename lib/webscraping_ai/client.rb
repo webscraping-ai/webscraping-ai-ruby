@@ -107,27 +107,33 @@ module WebScrapingAI
       get("/serp/locations", q: q, limit: limit)
     end
 
-    # GET /data — returns structured JSON for a page on a supported site as a Hash
-    # (request_parameters: url/provider/type, parse_status, data). Priced per site
-    # (see https://webscraping.ai/docs#data); unsupported URLs and failed fetches are not charged.
+    # GET /data — returns structured JSON for any public web page as a Hash
+    # (request_parameters: url/provider/type, parse_status, data). `provider` is the site the page
+    # belongs to (e.g. `toscrape.com`) and `type` the kind of page (e.g. `product`); both, and
+    # `parse_status`, are open sets of strings, and `data` may be nil. Pricing:
+    # https://webscraping.ai/docs#data.
     #
-    # The client never checks which site `url` belongs to: supported sites (e.g. YouTube, TikTok,
-    # X/Twitter, LinkedIn, Instagram, Reddit) are added server-side. An unsupported URL or page type
-    # returns a 400 that is not charged (BadRequestError); its message lists what is supported.
-    # `provider`, `type` and `parse_status` are open sets of strings; `data` may be nil.
+    # Some popular sites have dedicated parsers with fixed fields. For other sites, the first request
+    # for a new kind of page also has an AI model learn the page's structure, so it can take up to
+    # about 45 seconds (keep the client `timeout` above that). When learning takes longer, or another
+    # request is already learning that site, the API returns a 503 (`error_code`
+    # `structure_processing`, `retry_after` in seconds, not charged), raised as ApiError with status
+    # 503 (the JSON is in `response_body`); retry after `retry_after` seconds, which usually returns
+    # data. If no structured data can be found (empty page, login wall), the API
+    # returns a 422 (`error_code` `structure_unavailable`, not charged), raised as ApiError with
+    # status 422; use #fields instead.
     #
     # `country`: two-letter country code of the proxy used to fetch the page, `us` by default.
-    # `transcript`: YouTube videos only. Also fetch the video's transcript into `data.transcript`.
-    # It's null when no matching captions are available. If the transcript fetch itself fails, the
-    # whole request fails with a 500 and is not charged.
-    # `transcript_language`: caption language to pick, e.g. `en` or `de`. Without it, English is
-    # preferred, then the first available track. If the video has no captions in that language,
-    # `data.transcript` is null.
+    # `transcript`: video pages on sites with a dedicated parser only. Also fetch the video's
+    # transcript into `data.transcript`. It's null when no matching captions are available. If the
+    # transcript fetch itself fails, the whole request fails with a 500 and is not charged.
+    # `transcript_language`: with transcript=true, the caption language to pick, e.g. `en` or `de`.
+    # Without it, English is preferred, then the first available track. If the video has no captions
+    # in that language, `data.transcript` is null.
     #
     # Any other keyword arguments are sent as-is as extra query params (for provider-specific params
     # added later). Values must be String, Integer, Float or boolean (nil omits the param); the names
     # `api_key`, `url`, `country`, `transcript` and `transcript_language` raise ArgumentError.
-    # None of the page-fetch options apply.
     def data(url, country: nil, transcript: nil, transcript_language: nil, **params)
       raise ArgumentError, "url is required" if url.nil? || (url.is_a?(String) && url.strip.empty?)
       raise ArgumentError, "url must be a String" unless url.is_a?(String)

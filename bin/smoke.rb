@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # Hand-run smoke test against the live API. Not part of the test suite —
-# costs ~77 credits per full sweep: 4 page calls x 1 (js: false, datacenter proxy),
-# question + fields 2 x 6, serp 15, serp_location 2 pages x 15, serp_locations free, data 15,
-# data_unsupported free (400), account free.
+# uses real credits: page calls run with js: false on the datacenter proxy to keep the cost down;
+# serp_location is billed per results page returned; data_any_site is not charged when it answers
+# 503, 422 or a 500 timeout; serp_locations and account are free. See https://webscraping.ai/docs for pricing.
 #
 # Usage:
 #   WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke
@@ -22,8 +22,8 @@ end
 
 client = WebScrapingAI::Client.new(api_key: api_key)
 target = "https://example.com"
-# Page tools run without JS on datacenter proxies so each call costs the documented 1 credit
-# (AI tools 6). Default js: true would cost several times more.
+# Page tools run without JS on datacenter proxies so each call costs the documented minimum.
+# Default js: true would cost several times more.
 page_opts = { js: false, proxy: "datacenter" }
 
 class SmokeCheckFailed < StandardError; end
@@ -99,14 +99,25 @@ cases = {
     check.call(title.is_a?(String) && !title.strip.empty?, "data returned no data.title")
     "#{provider}/#{result.dig("request_parameters", "type")} #{result["parse_status"]}, title: #{title.inspect}"
   end,
-  # No client-side site filter: an unsupported URL must reach the server and come back as its free 400.
-  "data_unsupported" => lambda do
-    client.data("https://example.com/")
-    raise SmokeCheckFailed, "data on https://example.com/ unexpectedly succeeded"
-  rescue WebScrapingAI::BadRequestError => e
-    check.call(e.status == 400, "data_unsupported status was #{e.status}")
-    check.call(e.message.include?("Unsupported URL"), "data_unsupported message was #{e.message.inspect}")
-    "server 400: #{e.message}"
+  # Any public page: example.com must come back as a success envelope, a free 503 when learning its
+  # structure outlasts the request, a free 422 when it has no structured data, or a free 500 timeout
+  # when extracting the data or loading the page runs out of time (all raised as ApiError).
+  "data_any_site" => lambda do
+    result = client.data("https://example.com/")
+    check.call(result.is_a?(Hash) && result.key?("request_parameters"),
+               "data_any_site returned no envelope: #{result.inspect}")
+    "success envelope: parse_status=#{result["parse_status"].inspect}"
+  rescue WebScrapingAI::ApiError => e
+    expected = { 503 => "structure_processing", 422 => "structure_unavailable", 500 => "timeout" }[e.status]
+    raise unless expected
+
+    error_code = begin
+      JSON.parse(e.response_body.to_s)["error_code"]
+    rescue JSON::ParserError, TypeError
+      nil
+    end
+    check.call(error_code == expected, "data_any_site #{e.status} error_code was #{error_code.inspect}")
+    "#{e.status} #{expected}"
   end
 }
 
