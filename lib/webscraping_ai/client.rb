@@ -109,7 +109,7 @@ module WebScrapingAI
 
     # GET /data — returns structured JSON for any public web page as a Hash
     # (request_parameters: url/provider/type, parse_status, data). `provider` is the site the page
-    # belongs to (e.g. `toscrape.com`) and `type` the kind of page (e.g. `product`); both, and
+    # belongs to (e.g. `toscrape.com`) and `type` the kind of page (e.g. `book`); both, and
     # `parse_status`, are open sets of strings, and `data` may be nil. Pricing:
     # https://webscraping.ai/docs#data.
     #

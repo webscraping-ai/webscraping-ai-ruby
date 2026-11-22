@@ -208,7 +208,7 @@ and `google_parent_id` is `nil` for countries.
 
 `#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` returns structured JSON
 for any public web page as a `Hash`. Pass the page's normal URL; the site the page belongs to (`provider`,
-e.g. `toscrape.com`) and the kind of page (`type`, e.g. `product`) are detected from it. See
+e.g. `toscrape.com`) and the kind of page (`type`, e.g. `book`) are detected from it. See
 [pricing](https://webscraping.ai/docs#data).
 
 Some popular sites have dedicated parsers with fixed fields. For other sites, the first request for a new
