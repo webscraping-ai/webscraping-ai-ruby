@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file. This projec
 ## Unreleased
 ### Changed
 
-- Docs: `#data`'s `country:` has no fixed `us` default. Without it, pages on a country site with a dedicated parser (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`; some dedicated parsers ignore it.
+- Docs: `#data`'s `country:` has no fixed `us` default. Without it, Indeed country sites (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`; some dedicated parsers ignore it.
 - Docs: the page `timeout` maximum is 25000 ms (larger values are capped), not 30000.
 - Docs: `proxy` also accepts `auto` (tries datacenter, then residential, then stealth in one request; not with `custom_proxy`). `Client::PROXY_TYPES` now includes `auto`.
 - Docs: the `/data` example shows the live output (`type` `"book"`, `currency` `"£"`), and the `/data` error notes cover the retryable 500 `timeout` and `ai_unavailable` (not charged).

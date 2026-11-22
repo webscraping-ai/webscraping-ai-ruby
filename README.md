@@ -220,7 +220,7 @@ URL's site, so new sites and parsers work without a gem upgrade.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `String` | — | Page URL (required, positional; blank or non-String raises `ArgumentError`) |
-| `country` | `String` | — | Two-letter country code of the proxy used to fetch the page. Without it, pages on a country site with a dedicated parser (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`. Some dedicated parsers use a fixed route and ignore it |
+| `country` | `String` | — | Two-letter country code of the proxy used to fetch the page. Without it, Indeed country sites (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`. Some dedicated parsers use a fixed route and ignore it |
 | `transcript` | `Boolean` | `false` | Video pages on sites with a dedicated parser only. Also fetch the video's transcript into `data.transcript`. It's null when no matching captions are available. If the transcript fetch itself fails, the whole request fails with a 500 and is not charged |
 | `transcript_language` | `String` | — | With `transcript: true`. Caption language to pick, e.g. `en` or `de`. Without it, English is preferred, then the first available track. If the video has no captions in that language, `data.transcript` is null |
 | `**params` | `String`, `Integer`, `Float`, boolean | — | Extra query params sent as-is, for provider-specific params added later (`nil` omits one). `api_key`, `url`, `country`, `transcript` and `transcript_language` raise `ArgumentError`; use the named options for the last three |
