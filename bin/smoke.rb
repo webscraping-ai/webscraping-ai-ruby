@@ -2,7 +2,8 @@
 # Hand-run smoke test against the live API. Not part of the test suite —
 # uses real credits: page calls run with js: false on the datacenter proxy to keep the cost down;
 # serp_location is billed per results page returned; data_any_site is not charged when it answers
-# 503, 422 or a 500 timeout; serp_locations and account are free. See https://webscraping.ai/docs for pricing.
+# 503, 422 or a 500 timeout/ai_unavailable; serp_locations and account are free.
+# See https://webscraping.ai/docs for pricing.
 #
 # Usage:
 #   WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke
@@ -100,15 +101,20 @@ cases = {
     "#{provider}/#{result.dig("request_parameters", "type")} #{result["parse_status"]}, title: #{title.inspect}"
   end,
   # Any public page: example.com must come back as a success envelope, a free 503 when learning its
-  # structure outlasts the request, a free 422 when it has no structured data, or a free 500 timeout
-  # when extracting the data or loading the page runs out of time (all raised as ApiError).
+  # structure outlasts the request, a free 422 when it has no structured data, a free 500 timeout
+  # when extracting the data or loading the page runs out of time, or a free 500 ai_unavailable when
+  # the AI model is busy (all raised as ApiError).
   "data_any_site" => lambda do
     result = client.data("https://example.com/")
     check.call(result.is_a?(Hash) && result.key?("request_parameters"),
                "data_any_site returned no envelope: #{result.inspect}")
     "success envelope: parse_status=#{result["parse_status"].inspect}"
   rescue WebScrapingAI::ApiError => e
-    expected = { 503 => "structure_processing", 422 => "structure_unavailable", 500 => "timeout" }[e.status]
+    expected = {
+      503 => %w[structure_processing],
+      422 => %w[structure_unavailable],
+      500 => %w[timeout ai_unavailable]
+    }[e.status]
     raise unless expected
 
     error_code = begin
@@ -116,8 +122,8 @@ cases = {
     rescue JSON::ParserError, TypeError
       nil
     end
-    check.call(error_code == expected, "data_any_site #{e.status} error_code was #{error_code.inspect}")
-    "#{e.status} #{expected}"
+    check.call(expected.include?(error_code), "data_any_site #{e.status} error_code was #{error_code.inspect}")
+    "#{e.status} #{error_code}"
   end
 }
 
