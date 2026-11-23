@@ -13,7 +13,7 @@ structured field extraction on any page. See the
 
 ```ruby
 # Gemfile
-gem "webscraping_ai", "~> 4.1"
+gem "webscraping_ai", "~> 4.3"
 ```
 
 Or:
@@ -112,11 +112,11 @@ All page-fetching endpoints accept these common options (passed as keyword argum
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `headers` | `Hash` | — | HTTP headers to send to the target page (e.g. `{ "Cookie" => "session=..." }`) |
-| `timeout` | `Integer` | `10000` | Page retrieval timeout in ms (1–30000) |
+| `timeout` | `Integer` | `10000` | Page retrieval timeout in ms (1–25000; larger values are capped at 25000) |
 | `js` | `Boolean` | `true` | Execute on-page JavaScript via headless Chromium |
 | `js_timeout` | `Integer` | `2000` | JS rendering timeout in ms (1–20000) |
 | `wait_for` | `String` | — | CSS selector to wait for before returning (overrides `js_timeout`) |
-| `proxy` | `String` | `"datacenter"` | One of `datacenter`, `residential`, `stealth` |
+| `proxy` | `String` | `"datacenter"` | One of `datacenter`, `residential`, `stealth`, `auto`. `auto` tries datacenter, then residential, then stealth in one request and bills only the tier that worked; it can't be combined with `custom_proxy` |
 | `country` | `String` | `"us"` | Proxy country: `us`, `gb`, `de`, `it`, `fr`, `ca`, `es`, `ru`, `jp`, `kr`, `in`, `hk`, `tr` |
 | `custom_proxy` | `String` | — | Your own proxy in `http://user:pass@host:port` form |
 | `device` | `String` | `"desktop"` | One of `desktop`, `mobile`, `tablet` |
@@ -208,7 +208,7 @@ and `google_parent_id` is `nil` for countries.
 
 `#data(url, country: nil, transcript: nil, transcript_language: nil, **params)` returns structured JSON
 for any public web page as a `Hash`. Pass the page's normal URL; the site the page belongs to (`provider`,
-e.g. `toscrape.com`) and the kind of page (`type`, e.g. `product`) are detected from it. See
+e.g. `toscrape.com`) and the kind of page (`type`, e.g. `book`) are detected from it. See
 [pricing](https://webscraping.ai/docs#data).
 
 Some popular sites have dedicated parsers with fixed fields. For other sites, the first request for a new
@@ -220,16 +220,16 @@ URL's site, so new sites and parsers work without a gem upgrade.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `String` | — | Page URL (required, positional; blank or non-String raises `ArgumentError`) |
-| `country` | `String` | `"us"` | Two-letter country code of the proxy used to fetch the page, `us` by default |
+| `country` | `String` | — | Two-letter country code of the proxy used to fetch the page. Without it, Indeed country sites (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`. Some dedicated parsers use a fixed route and ignore it |
 | `transcript` | `Boolean` | `false` | Video pages on sites with a dedicated parser only. Also fetch the video's transcript into `data.transcript`. It's null when no matching captions are available. If the transcript fetch itself fails, the whole request fails with a 500 and is not charged |
 | `transcript_language` | `String` | — | With `transcript: true`. Caption language to pick, e.g. `en` or `de`. Without it, English is preferred, then the first available track. If the video has no captions in that language, `data.transcript` is null |
 | `**params` | `String`, `Integer`, `Float`, boolean | — | Extra query params sent as-is, for provider-specific params added later (`nil` omits one). `api_key`, `url`, `country`, `transcript` and `transcript_language` raise `ArgumentError`; use the named options for the last three |
 
 ```ruby
 result = client.data("https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html")
-result["request_parameters"] # => { "url" => "...", "provider" => "toscrape.com", "type" => "product" }
+result["request_parameters"] # => { "url" => "...", "provider" => "toscrape.com", "type" => "book" }
 result["parse_status"]       # => "ok" (or "parse_failed" / "not_found")
-result["data"]               # => { "title" => "A Light in the Attic", "price" => 51.77, "currency" => "GBP" }
+result["data"]               # => { "title" => "A Light in the Attic", "price" => 51.77, "currency" => "£" }
                              #    shape depends on provider and type; may be nil
 ```
 
@@ -260,7 +260,9 @@ the API returns a 422 with `error_code` `"structure_unavailable"`, not charged. 
 **Other `/data` errors.** Redirects within the same site (http→https, `www`, trailing slash) are followed;
 a redirect to another site raises `WebScrapingAI::ServerError` (500, `error_code` `"target_redirect"`, the
 target in the message), not charged. Starting too many new kinds of pages in an hour raises
-`WebScrapingAI::RateLimitError` (429, `error_code` `"rate_limited"`).
+`WebScrapingAI::RateLimitError` (429, `error_code` `"rate_limited"`). If loading the page or extracting the
+data runs out of time, or the AI model is busy, it raises `WebScrapingAI::ServerError` (500, `error_code`
+`"timeout"` or `"ai_unavailable"`), not charged; call again.
 
 `provider`, `type` and `parse_status` are open sets of strings, and `data` is the decoded JSON as-is
 (no per-site classes), so new sites and fields show up without a gem release.
@@ -305,7 +307,7 @@ bundle exec rubocop
 
 ## Smoke testing
 
-`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and uses real credits (see [pricing](https://webscraping.ai/docs)): the four page calls run with `js: false` and `proxy: "datacenter"` to keep the cost down, there are two AI calls (`question`, `fields`), two SERP calls (one plain, one two-page search from Austin, billed per page returned) and one `/data` call on a page on a site with a dedicated parser. `serp_locations` is free. A second `/data` call on `https://example.com/` (any site) must come back as a success envelope, a free 503 `structure_processing`, or a free 422 `structure_unavailable`, proving there is no client-side site filter. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, the Austin SERP must report an Austin `location_used`, `serp_locations` must find Austin, `/data` must parse a title, `selected_multiple` must match something), and failure messages redact the API key.
+`bin/smoke.rb` hits every endpoint once against the live API, loading the gem from `lib/` so it tests the working tree. It is not part of the spec suite and uses real credits (see [pricing](https://webscraping.ai/docs)): the four page calls run with `js: false` and `proxy: "datacenter"` to keep the cost down, there are two AI calls (`question`, `fields`), two SERP calls (one plain, one two-page search from Austin, billed per page returned) and one `/data` call on a page on a site with a dedicated parser. `serp_locations` is free. A second `/data` call on `https://example.com/` (any site) must come back as a success envelope, a free 503 `structure_processing`, a free 422 `structure_unavailable`, or a free 500 `timeout` or `ai_unavailable`, proving there is no client-side site filter. Each case checks the result shape as well as exceptions (e.g. SERP must return organic results for the right query, the Austin SERP must report an Austin `location_used`, `serp_locations` must find Austin, `/data` must parse a title, `selected_multiple` must match something), and failure messages redact the API key.
 
 ```bash
 WEBSCRAPING_AI_API_KEY=... bundle exec rake smoke

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. This project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+### Changed
+
+- Docs: `#data`'s `country:` has no fixed `us` default. Without it, Indeed country sites (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`; some dedicated parsers ignore it.
+- Docs: the page `timeout` maximum is 25000 ms (larger values are capped), not 30000.
+- Docs: `proxy` also accepts `auto` (tries datacenter, then residential, then stealth in one request; not with `custom_proxy`). `Client::PROXY_TYPES` now includes `auto`.
+- Docs: the `/data` example shows the live output (`type` `"book"`, `currency` `"£"`), and the `/data` error notes cover the retryable 500 `timeout` and `ai_unavailable` (not charged).
+- Docs: the install snippet pins `~> 4.3`, since the README documents 4.3 features.
+- `bin/smoke.rb`: the `/data` any-site check also accepts a 500 `ai_unavailable`.
+- CHANGELOG: the 4.0.0 heading carries its release date.
+
 ## 4.3.0 — 2026-10-24
 ### Added
 
@@ -40,7 +51,7 @@ All notable changes to this project will be documented in this file. This projec
 
 - Documentation: expanded README — API docs, signup/dashboard links, badges, and links to the other official clients.
 
-## [4.0.0] - Unreleased
+## 4.0.0 — 2026-05-12
 
 ### Changed
 

@@ -3,7 +3,7 @@ require "json"
 
 module WebScrapingAI
   class Client
-    PROXY_TYPES = %w[datacenter residential stealth].freeze
+    PROXY_TYPES = %w[datacenter residential stealth auto].freeze
     COUNTRIES = %w[us gb de it fr ca es ru jp kr in hk tr].freeze
     DEVICES = %w[desktop mobile tablet].freeze
     TEXT_FORMATS = %w[plain xml json].freeze
@@ -109,7 +109,7 @@ module WebScrapingAI
 
     # GET /data — returns structured JSON for any public web page as a Hash
     # (request_parameters: url/provider/type, parse_status, data). `provider` is the site the page
-    # belongs to (e.g. `toscrape.com`) and `type` the kind of page (e.g. `product`); both, and
+    # belongs to (e.g. `toscrape.com`) and `type` the kind of page (e.g. `book`); both, and
     # `parse_status`, are open sets of strings, and `data` may be nil. Pricing:
     # https://webscraping.ai/docs#data.
     #
@@ -121,9 +121,13 @@ module WebScrapingAI
     # 503 (the JSON is in `response_body`); retry after `retry_after` seconds, which usually returns
     # data. If no structured data can be found (empty page, login wall), the API
     # returns a 422 (`error_code` `structure_unavailable`, not charged), raised as ApiError with
-    # status 422; use #fields instead.
+    # status 422; use #fields instead. If loading the page or extracting the data runs out of time, or
+    # the AI model is busy, the API returns a 500 (`error_code` `timeout` or `ai_unavailable`, not
+    # charged), raised as ServerError; call again.
     #
-    # `country`: two-letter country code of the proxy used to fetch the page, `us` by default.
+    # `country`: two-letter country code of the proxy used to fetch the page. Without it, Indeed
+    # country sites (e.g. `uk.indeed.com`) use that site's country and everything else uses `us`.
+    # Some dedicated parsers use a fixed route and ignore it.
     # `transcript`: video pages on sites with a dedicated parser only. Also fetch the video's
     # transcript into `data.transcript`. It's null when no matching captions are available. If the
     # transcript fetch itself fails, the whole request fails with a 500 and is not charged.
